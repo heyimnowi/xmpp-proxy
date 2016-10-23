@@ -29,7 +29,7 @@ Adium
 
       -- "watchregistrations"; -- Alert admins of registrations
 
-   }
+    }
 
     log = {
 
