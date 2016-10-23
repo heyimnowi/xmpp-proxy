@@ -1,18 +1,13 @@
-El servidor que maneja el chat va a estar aca:
-
+## AWS Server
 ec2-54-69-136-236.us-west-2.compute.amazonaws.com
 
-El mismo corre este programa que es una implementacion del protocolo XMPP:
+## XMPP Server
+prosody
 
-prosody (mas info goolgear)
+## XMPP Client
+Adium
 
-Vamos a estar usando los siguientes clientes de XMPP para realizar pruebas con nuestro proxy
-
-Adium si tenes OSx
-Pidgin si tenes ubuntu
-
---------
-
+## Prosody AWS Config
 admins = { "admin@nowixmppserver" }
 authentication = "internal_plain"
 allow_registration = true;
@@ -33,26 +28,9 @@ log = {
 daemonize=false
 VirtualHost "nowixmppserver"
 
+## Adium config
 
-
------------
-
-usando Adium:
-
-La configuracion va asi:
-
-Jabber ID:
-
-un_nombre@nowixmppserver
-
-Password:
-gilada
-
-Connect Server:
-ec2-54-69-136-236.us-west-2.compute.amazonaws.com
-
-resource:
-nowixmppserver
-
-Register Account:
-Pones nowixmppserver 5222
+- Jabber ID: username@nowixmppserver
+- Connect Server: ec2-54-69-136-236.us-west-2.compute.amazonaws.com
+- resource: nowixmppserver
+- Register Account: nowixmppserver 5222
