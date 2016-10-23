@@ -15,7 +15,7 @@ public class xmlParser {
 			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
 			Document doc = dBuilder.parse(s);
 			doc.getDocumentElement().normalize();
-	
+			
 			System.out.println("Root element :" + doc.getDocumentElement().getNodeName());
 	
 			NodeList body = doc.getElementsByTagName("body");

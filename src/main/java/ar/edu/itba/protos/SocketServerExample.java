@@ -12,6 +12,8 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 
+import ar.edu.itba.filters.Transformations;
+
 import com.google.common.base.Optional;
 
 public class SocketServerExample {
@@ -168,7 +170,8 @@ public class SocketServerExample {
             clientToServerChannelMap.put(clientChannel, Optional.of(serverChannel));
             serverToClientChannelMap.put(serverChannel, clientChannel);
     	}
-        writeInChannel(s, clientToServerChannelMap.get(clientChannel).get());
+    	String newString = Transformations.getInstance().applyTransformations(s);
+        writeInChannel(newString, clientToServerChannelMap.get(clientChannel).get());
     }
     
     private void writeInChannel(String s, SocketChannel channel) {
