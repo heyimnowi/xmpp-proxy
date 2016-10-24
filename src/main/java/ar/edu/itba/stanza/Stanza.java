@@ -1,19 +1,18 @@
 package ar.edu.itba.stanza;
 
+import ar.edu.itba.utils.Utils;
+
 public class Stanza {
 	
-	private static String MESSAGE_TAG = "<message";
-	private static Stanza instance;
+	public static String MESSAGE_TAG = "<message";
+	public static String JID_TAG_PATTERN = "<jid>(.*)<\\/jid>";
 	
-	public static Stanza getInstance() {
-		if (instance == null) {
-			instance = new Stanza();
-		}
-		return instance;
+	public static boolean isMessage(String s){
+		return s.contains(MESSAGE_TAG);
 	}
 	
-	public boolean isMessage(String s){
-		return s.contains(MESSAGE_TAG);
+	public static String tagAttr(String tag, String attr) {
+		return Utils.regexRead(tag, attr + "='([^']*)'").group(1);
 	}
 
 }

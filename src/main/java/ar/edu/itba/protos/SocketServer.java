@@ -15,12 +15,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import ar.edu.itba.filters.SilentUser;
 import ar.edu.itba.filters.Transformations;
 import ar.edu.itba.stanza.Stanza;
+import ar.edu.itba.utils.Utils;
 
 import com.google.common.base.Optional;
 
 public class SocketServer {
 	private Selector selector;
     private InetSocketAddress listenAddress;
+    
+    private ConcurrentHashMap<SocketChannel, ProxyConnection> connectionsMap = new ConcurrentHashMap<SocketChannel, ProxyConnection>();
+    
     private ConcurrentHashMap<SocketChannel, Optional<SocketChannel>> clientToServerChannelMap = new ConcurrentHashMap<SocketChannel, Optional<SocketChannel>>();
     private ConcurrentHashMap<SocketChannel, SocketChannel> serverToClientChannelMap = new ConcurrentHashMap<SocketChannel, SocketChannel>();
     private SocketChannel serverChannelWillBeHere = null;
@@ -96,6 +100,7 @@ public class SocketServer {
         System.out.println("Connected to: " + remoteAddr);
         // register channel with selector for further IO
         channel.register(this.selector, SelectionKey.OP_READ);
+        connectionsMap.put(channel, new ProxyConnection(channel));
         clientToServerChannelMap.put(channel, Optional.fromNullable(serverChannelWillBeHere));
     }
     
@@ -120,13 +125,16 @@ public class SocketServer {
         
         String stringRead = new String(data);
         System.out.println("Got: " + stringRead);
+        
         if (stringRead.equals(XMPP_FINAL_MESSAGE)) {
         	closeBothChannels(channel);
         } else {
         	if (channelIsServerSide(channel)) {
             	sendToClient(stringRead, serverToClientChannelMap.get(channel));
             } else {
-            	if (Stanza.getInstance().isMessage(stringRead) && SilentUser.getInstance().isSilent(stringRead)) {
+            	String fromJid = getFromJid(channel, stringRead);
+//            	Utils.regexRead(stringRead, ).group(1)
+            	if (SilentUser.getInstance().filterMessage(stringRead, fromJid)) {
             		// TODO HANDLE ERROR
             		System.out.println("Estas silenciado vieja");
             	} else {
@@ -174,6 +182,7 @@ public class SocketServer {
             SocketChannel serverChannel = SocketChannel.open(hostAddress);
             serverChannel.configureBlocking(false);
             serverChannel.register(this.selector, SelectionKey.OP_READ);
+            connectionsMap.get(clientChannel).setServerChannel(serverChannel);
             clientToServerChannelMap.put(clientChannel, Optional.of(serverChannel));
             serverToClientChannelMap.put(serverChannel, clientChannel);
     	}
@@ -191,5 +200,22 @@ public class SocketServer {
         String clientOrServer = channelIsServerSide(channel) ? "server" : "client"; 
         System.out.println("Escribiendo al " + clientOrServer + " xmpp..");
         buffer.clear();
+    }
+    
+    private String getFromJid(SocketChannel channel, String stanza) {
+    	if (connectionsMap.get(channel).getJid() == null) {
+    		if (Utils.regexMatch(stanza, "to=")) {
+    			String toAttr = Stanza.tagAttr(stanza, "to");
+        		if (toAttr.contains("@")) {
+        			String jid = toAttr.split("/")[0];
+        			connectionsMap.get(channel).setJid(jid);
+        			return jid;
+        		}
+    		}
+    		return "";
+    	} else {
+    		return connectionsMap.get(channel).getJid();
+    	}
+    	
     }
 }
