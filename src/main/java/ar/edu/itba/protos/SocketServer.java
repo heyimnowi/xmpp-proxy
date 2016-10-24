@@ -22,6 +22,7 @@ import com.google.common.base.Optional;
 public class SocketServer {
 	private Selector selector;
     private InetSocketAddress listenAddress;
+    private String serverXmppHost = "ec2-54-69-136-236.us-west-2.compute.amazonaws.com";
     
     private ConcurrentHashMap<SocketChannel, ProxyConnection> connectionsMap = new ConcurrentHashMap<SocketChannel, ProxyConnection>();
     
@@ -133,10 +134,17 @@ public class SocketServer {
             	sendToClient(stringRead, serverToClientChannelMap.get(channel));
             } else {
             	String fromJid = getFromJid(channel, stringRead);
-//            	Utils.regexRead(stringRead, ).group(1)
             	if (SilentUser.getInstance().filterMessage(stringRead, fromJid)) {
-            		// TODO HANDLE ERROR
-            		System.out.println("Estas silenciado vieja");
+            		// moverlo a otro lado
+            		// solo mostrar error cuando mando con un user silenciado no?
+            		
+            		String message = "<message from='admin@xmpp-proxy' to='" + fromJid + "' type='error'>" +
+            				"<body>Estas silenciado vieja</body>" +
+            				"<error code='405' type='cancel'>" +
+            					"<not-allowed xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>" +
+            				"</error>" + 
+            			"</message>";
+            		sendToClient(message, channel);
             	} else {
             		sendToServer(stringRead, channel);
             	}
@@ -178,7 +186,7 @@ public class SocketServer {
     
     private void sendToServer(String s, SocketChannel clientChannel) throws IOException {
     	if (!clientToServerChannelMap.get(clientChannel).isPresent()) {
-    		InetSocketAddress hostAddress = new InetSocketAddress("ec2-54-69-136-236.us-west-2.compute.amazonaws.com", 5222);
+    		InetSocketAddress hostAddress = new InetSocketAddress(serverXmppHost, 5222);
             SocketChannel serverChannel = SocketChannel.open(hostAddress);
             serverChannel.configureBlocking(false);
             serverChannel.register(this.selector, SelectionKey.OP_READ);
