@@ -30,15 +30,15 @@
 
    **1.7.  Multiplexador de Cuentas**
 
-   1.8.  Silenciar usuarios
+   **1.8.  Silenciar usuarios**
 
    **1.9.  Transformaciones de mensajes requeridos**
 
-   1.10. Stream Initiation File Transfer5
+   **1.10. Stream Initiation File Transfer**
 
    1.11. Configuración  
 
-   1.12. Monitoreo Remoto5
+   1.12. Monitoreo Remoto
 
    2.  Requerimientos No Funcionales
 
