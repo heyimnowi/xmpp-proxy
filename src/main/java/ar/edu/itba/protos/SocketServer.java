@@ -12,11 +12,13 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 
+import ar.edu.itba.filters.SilentUser;
 import ar.edu.itba.filters.Transformations;
+import ar.edu.itba.stanza.Stanza;
 
 import com.google.common.base.Optional;
 
-public class SocketServerExample {
+public class SocketServer {
 	private Selector selector;
     private InetSocketAddress listenAddress;
     private ConcurrentHashMap<SocketChannel, Optional<SocketChannel>> clientToServerChannelMap = new ConcurrentHashMap<SocketChannel, Optional<SocketChannel>>();
@@ -30,7 +32,7 @@ public class SocketServerExample {
     	Runnable server = new Runnable() {
 			public void run() {
 				 try {
-					new SocketServerExample("localhost", 5222).startServer();
+					new SocketServer("localhost", 5222).startServer();
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -41,7 +43,7 @@ public class SocketServerExample {
        new Thread(server).start();
     }
 
-    public SocketServerExample(String address, int port) throws IOException {
+    public SocketServer(String address, int port) throws IOException {
     	listenAddress = new InetSocketAddress(address, port);
     }
 
@@ -124,7 +126,12 @@ public class SocketServerExample {
         	if (channelIsServerSide(channel)) {
             	sendToClient(stringRead, serverToClientChannelMap.get(channel));
             } else {
-            	sendToServer(stringRead, channel);
+            	if (Stanza.getInstance().isMessage(stringRead) && SilentUser.getInstance().isSilent(stringRead)) {
+            		// TODO HANDLE ERROR
+            		System.out.println("Estas silenciado vieja");
+            	} else {
+            		sendToServer(stringRead, channel);
+            	}
             }
         }
     }

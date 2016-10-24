@@ -7,12 +7,13 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringEscapeUtils;
 
+import ar.edu.itba.stanza.Stanza;
+
 public class Transformations {
 	
 	private static Transformations instance;
 	
 	private static Map<Character,String> swaps;
-	private static String MESSAGE_TAG = "<message";
 	private static String LEFT_OF_BODY_PATTERN = "(.*)<body>";
 	private static String BODY_PATTERN = "<body>(.*)<\\/body>";
 	private static String RIGHT_OF_BODY = "<\\/body>(.*)";
@@ -40,7 +41,7 @@ public class Transformations {
 	}
 	
 	public String applyTransformations(String s) {
-		if (!s.contains(MESSAGE_TAG)) {
+		if (!Stanza.getInstance().isMessage(s)) {
 			return s;
 		}
 		String leftOfBody = regexRead(s, LEFT_OF_BODY_PATTERN).group(0); // 0 means all the matched pattern
@@ -70,11 +71,11 @@ public class Transformations {
 	private Matcher regexRead(String s, String pattern) {
 		Pattern r = Pattern.compile(pattern);
 		Matcher m = r.matcher(s);
-		  if (m.find( )) {
+		if (m.find( )) {
 		     System.out.println("Found value: " + m.group(1) );
 		  }	else {
 		     System.out.println("NO MATCH");
 		  }
 		  return m;
-		}
+	}
 }
