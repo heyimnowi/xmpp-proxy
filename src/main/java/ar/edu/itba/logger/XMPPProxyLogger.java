@@ -1,9 +1,8 @@
 package ar.edu.itba.logger;
 import java.io.IOException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import org.apache.log4j.Logger;
-import org.apache.log4j.PatternLayout;
-import org.apache.log4j.FileAppender;
 
 public class XMPPProxyLogger {
 	
@@ -12,8 +11,7 @@ public class XMPPProxyLogger {
 
 	
 	private XMPPProxyLogger() throws IOException {
-		logger = Logger.getLogger(XMPPProxyLogger.class);
-		logger.addAppender(new FileAppender(new PatternLayout("%5p | %d | %F | %L | %m%n"), "xmpp-server.log"));
+		logger = LoggerFactory.getLogger(XMPPProxyLogger.class);
 	}
 	
 	public static XMPPProxyLogger getInstance() {
@@ -21,7 +19,7 @@ public class XMPPProxyLogger {
 			if (instance == null)
 				instance = new XMPPProxyLogger();
 		} catch (IOException e) {
-			System.out.println("No se pudo abrir el archivo");
+			XMPPProxyLogger.getInstance().error("Cannot open logger configuration file");
 		}
 		return instance;
 	}
@@ -32,5 +30,17 @@ public class XMPPProxyLogger {
 	
 	public void error(String s) {
 		logger.error(s);
+	}
+	
+	public void info(String s) {
+		logger.info(s);
+	}
+	
+	public void trace(String s) {
+		logger.trace(s);
+	}
+	
+	public void warn(String s) {
+		logger.warn(s);
 	}
 }

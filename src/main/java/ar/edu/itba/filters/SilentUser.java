@@ -26,20 +26,8 @@ public class SilentUser {
 		return instance;
 	}
 	
-//	* jid esta silenciado 
-//	jid no esta silenciado pero el to: esta silenciado
 	public boolean filterMessage(String message, String fromJid) {
-		if (Stanza.isMessage(message)) {
-			if (isSilent(fromJid)) {
-				return true;
-			} else {
-				String toJid = Stanza.tagAttr(message, "to");
-				// contemplar el jid/resource
-				toJid = toJid.split("/")[0];
-				return isSilent(toJid);
-			}
-		}
-		return false;
+		return Stanza.isMessage(message) && Stanza.isChatMessage(message) && isSilent(fromJid);
 	}
 	
 	public boolean isSilent(String jid) {

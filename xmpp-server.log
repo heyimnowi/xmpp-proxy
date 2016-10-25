@@ -1,5 +1,0 @@
-DEBUG | 2016-10-24 21:31:40,487 | XMPPProxyLogger.java | 30 | Server started
-DEBUG | 2016-10-24 21:33:50,471 | XMPPProxyLogger.java | 30 | Server started
-DEBUG | 2016-10-24 21:53:01,660 | XMPPProxyLogger.java | 30 | Server started
-DEBUG | 2016-10-24 21:53:04,595 | XMPPProxyLogger.java | 30 | Accepted new client connection from /127.0.0.1:59016
-DEBUG | 2016-10-24 21:53:05,625 | XMPPProxyLogger.java | 30 | Accepted new client connection from /127.0.0.1:59017

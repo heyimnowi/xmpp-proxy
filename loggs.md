@@ -14,8 +14,15 @@ New socket between client and proxy
 
 New socket between proxy to XMPP server
 
+
       YY-MM-DD HH:MM:SS DEBUG opened new socket from XXX.XXX.XXX.XXX:PORT_PROXY to XXX.XXX.XXX.XXX:PORT_SERVER
 
+Client connected
+
+
+      YY-MM-DD HH:MM:SS INFO Client user@server connected
+
 Connection closed
+
 
       YY-MM-DD HH:MM:SS DEBUG Connection closed by client XXX.XXX.XXX.XXX:PORT_CLIENT

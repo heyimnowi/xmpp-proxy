@@ -3,6 +3,8 @@ package ar.edu.itba.admin;
 import java.io.FileInputStream;
 import java.util.Properties;
 
+import ar.edu.itba.logger.XMPPProxyLogger;
+
 public class ProxyConfiguration {
 	private Properties properties;
 	private FileInputStream file;
@@ -25,7 +27,7 @@ public class ProxyConfiguration {
 			properties.load(file);
 
 		} catch (Exception e) {
-			System.out.println("La pecheamos al abrir el file de configuraciones");
+			XMPPProxyLogger.getInstance().error("Cannot open proxy configuration file");
 		}
 	}
 
