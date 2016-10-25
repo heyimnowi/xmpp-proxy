@@ -12,6 +12,8 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.slf4j.Logger;
+
 import ar.edu.itba.admin.ProxyConfiguration;
 import ar.edu.itba.filters.SilentUser;
 import ar.edu.itba.filters.Transformations;
@@ -23,36 +25,25 @@ import ar.edu.itba.utils.Utils;
 public class XMPPProxy {
 	
 	private Selector selector;
+	private XMPPProxyLogger logger;
     private InetSocketAddress listenAddress;
     private ConcurrentHashMap<SocketChannel, ProxyConnection> clientToProxyChannelMap = new ConcurrentHashMap<SocketChannel, ProxyConnection>();
     private ConcurrentHashMap<SocketChannel, ProxyConnection> proxyToClientChannelMap = new ConcurrentHashMap<SocketChannel, ProxyConnection>();
     private final static String XMPP_FINAL_MESSAGE = "</stream:stream>";
     private final static int BUFFER_SIZE = 1024*100;
-    
-    public static void main(String[] args) throws Exception {
-    	Runnable xmppProxy = new Runnable() {
-			public void run() {
-				 try {
-					new XMPPProxy(
-							ProxyConfiguration.getInstance().getProperty("xmpp_proxy_host"),
-							Integer.parseInt(ProxyConfiguration.getInstance().getProperty("xmpp_proxy_port"))).startXMPPProxy();
-				} catch (IOException e) {
-					XMPPProxyLogger.getInstance().error("Cannot start proxy");
-				}	
-			}
-		};	
-       new Thread(xmppProxy).start();
-    }
 
-    public XMPPProxy(String address, int port) throws IOException {
+    public XMPPProxy(String address, int port, Selector selector) throws IOException {
     	listenAddress = new InetSocketAddress(address, port);
+    	logger = XMPPProxyLogger.getInstance();
     }
 
     /**
      * Start the XMPP Proxy
-     * @throws IOException
+     * @return 
+     * @throws IOException`
      */
-    private void startXMPPProxy() throws IOException {
+    Runnable start() throws IOException {
+    	System.out.println("Hola vieja");
         this.selector = Selector.open();
         ServerSocketChannel proxyChannel = ServerSocketChannel.open();
         proxyChannel.configureBlocking(false);
@@ -60,7 +51,7 @@ public class XMPPProxy {
         // retrieve server socket and bind to port
         proxyChannel.socket().bind(listenAddress);
         proxyChannel.register(this.selector, SelectionKey.OP_ACCEPT);
-        XMPPProxyLogger.getInstance().info("Proxy started");
+        logger.info("Proxy started");
 
         while (true) {
             // wait for events
@@ -101,7 +92,7 @@ public class XMPPProxy {
         Socket socket = channel.socket();
         SocketAddress remoteAddr = socket.getRemoteSocketAddress();
         SocketAddress localAddr = socket.getLocalSocketAddress();
-        XMPPProxyLogger.getInstance().debug("Accepted new client connection from " + localAddr + " to " + remoteAddr);
+        logger.debug("Accepted new client connection from " + localAddr + " to " + remoteAddr);
         channel.register(this.selector, SelectionKey.OP_READ);
         clientToProxyChannelMap.put(channel, new ProxyConnection(channel));
     }
@@ -118,7 +109,7 @@ public class XMPPProxy {
         numRead = channel.read(buffer);
 
         if (numRead == -1) {
-            XMPPProxyLogger.getInstance().warn("Connection closed by client");
+            logger.warn("Connection closed by client");
             channel.close();
             key.cancel();
             return;
@@ -139,7 +130,7 @@ public class XMPPProxy {
             	String fromJid = clientToProxyChannelMap.get(channel).getJid();
             	if (SilentUser.getInstance().filterMessage(stringRead, fromJid)) {
             		sendToClient(SilentUser.getInstance().getErrorMessage(fromJid), channel);
-            		XMPPProxyLogger.getInstance().info("Message from " + fromJid + " filtered");
+            		logger.info("Message from " + fromJid + " filtered");
             	} else {
             		sendToServer(stringRead, channel);
             	}
@@ -176,7 +167,7 @@ public class XMPPProxy {
 	    		XMPPProxyLogger.getInstance().debug("XMPP Proxy[" + serverLocalAddress + "] to XMPP Server[" + serverRemoteAddress + "] socket closed");
 	    	}
     	} catch (IOException e) {
-    		XMPPProxyLogger.getInstance().error("Error closing server and client channels");
+    		logger.error("Error closing server and client channels");
 			e.printStackTrace();
 		}
     }
@@ -227,7 +218,7 @@ public class XMPPProxy {
         try {
 			channel.write(buffer);
 		} catch (IOException e) {
-			XMPPProxyLogger.getInstance().warn("Connection closed by client");
+			logger.warn("Connection closed by client");
 			
 		}
     	String jid;
