@@ -16,7 +16,7 @@
 
    1.  Requerimientos Funcionales
 
-   1.1.  Objetivo 
+   **1.1.  Objetivo**
 
    **1.2.  Funcionamiento**
 
