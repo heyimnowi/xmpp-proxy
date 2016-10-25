@@ -26,6 +26,7 @@ public class Transformations {
 	
 	private Transformations() {
 		swaps = new HashMap<Character,String>();
+		// TODO GET TRASNFORMATIONS PROPERTY
 		swaps.put('a', "4");
 		swaps.put('e', "3");
 		swaps.put('i', "1");
@@ -39,6 +40,11 @@ public class Transformations {
 		swaps.put('C', "&lt;");
 	}
 	
+	/**
+	 * Apply transformations to a message stanza
+	 * @param s
+	 * @return
+	 */
 	public String applyTransformations(String s) {
 		if (!Stanza.isMessage(s)) {
 			return s;
@@ -54,6 +60,11 @@ public class Transformations {
 		
 	}
 	
+	/**
+	 * Apply tranformations to a string
+	 * @param s
+	 * @return
+	 */
 	private String swapCharacters(String s) {
 		StringBuffer buffer = null;
 		if (s != null) {

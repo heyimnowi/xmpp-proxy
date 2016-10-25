@@ -24,7 +24,7 @@
 
    1.4.  Fallos
 
-   1.5.  Registros de acceso
+   **1.5.  Registros de acceso**
 
    1.6.  Métricas
 

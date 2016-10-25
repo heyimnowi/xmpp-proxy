@@ -26,11 +26,36 @@ public class SilentUser {
 		return instance;
 	}
 	
+	/**
+	 * Ask if a particular message has to be filtered
+	 * @param message
+	 * @param fromJid
+	 * @return
+	 */
 	public boolean filterMessage(String message, String fromJid) {
 		return Stanza.isMessage(message) && Stanza.isChatMessage(message) && isSilent(fromJid);
 	}
 	
+	/**
+	 * Ask is an user is silent
+	 * @param jid
+	 * @return
+	 */
 	public boolean isSilent(String jid) {
 		return users.contains(jid);
-	}	
+	}
+	
+	/**
+	 * Get the XMPP error message when a user is silent 
+	 * @param fromJid
+	 * @return
+	 */
+	public String getErrorMessage(String fromJid) {
+		return "<message from='admin@xmpp-proxy' to='" + fromJid + "' type='error'>" +
+				"<body>Estas silenciado vieja</body>" +
+				"<error code='405' type='cancel'>" +
+					"<not-allowed xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>" +
+				"</error>" + 
+			"</message>";
+	}
 }

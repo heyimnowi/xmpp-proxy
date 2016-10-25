@@ -15,22 +15,24 @@ public class ProxyConnection {
 	public SocketChannel getClientChannel() {
 		return clientChannel;
 	}
+	
 	public void setClientChannel(SocketChannel clientChannel) {
 		this.clientChannel = clientChannel;
 	}
+	
 	public SocketChannel getServerChannel() {
 		return serverChannel;
 	}
+	
 	public void setServerChannel(SocketChannel serverChannel) {
 		this.serverChannel = serverChannel;
 	}
+	
 	public String getJid() {
 		return jid;
 	}
+	
 	public void setJid(String jid) {
 		this.jid = jid;
 	}
-	
-	
-
 }

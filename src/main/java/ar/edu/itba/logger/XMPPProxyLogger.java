@@ -24,22 +24,42 @@ public class XMPPProxyLogger {
 		return instance;
 	}
 	
+	/**
+	 * Set a log with type DEBUG
+	 * @param s
+	 */
 	public void debug(String s) {
 		logger.debug(s);
 	}
 	
+	/**
+	 * Set a log with type ERROR
+	 * @param s
+	 */
 	public void error(String s) {
 		logger.error(s);
 	}
 	
+	/**
+	 * Set a log with type INFO
+	 * @param s
+	 */
 	public void info(String s) {
 		logger.info(s);
 	}
 	
+	/**
+	 * Set a log with type TRACE
+	 * @param s
+	 */
 	public void trace(String s) {
 		logger.trace(s);
 	}
 	
+	/**
+	 * Set a log with type WARN
+	 * @param s
+	 */
 	public void warn(String s) {
 		logger.warn(s);
 	}

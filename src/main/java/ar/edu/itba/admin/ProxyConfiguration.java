@@ -41,9 +41,8 @@ public class ProxyConfiguration {
 		properties.setProperty(property, value);
 	}
 
-
+	
 	public boolean hasProperty(String property) {
 		return properties.containsKey(property);
 	}
-
 }
