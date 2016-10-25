@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import ar.edu.itba.filters.SilentUser;
 import ar.edu.itba.filters.Transformations;
+import ar.edu.itba.logger.XMPPProxyLogger;
 import ar.edu.itba.stanza.Stanza;
 import ar.edu.itba.utils.Utils;
 
@@ -62,7 +63,7 @@ public class SocketServer {
         serverChannel.socket().bind(listenAddress);
         serverChannel.register(this.selector, SelectionKey.OP_ACCEPT);
         
-        System.out.println("Server started...");
+        XMPPProxyLogger.getInstance().info("Proxy started");
 
         while (true) {
             // wait for events
@@ -91,21 +92,20 @@ public class SocketServer {
         }
     }
 
-    //accept a connection made to this channel's socket
+    // Accept a connection made to this channel's socket
     private void accept(SelectionKey key) throws IOException {
         ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
         SocketChannel channel = serverChannel.accept();
         channel.configureBlocking(false);
         Socket socket = channel.socket();
         SocketAddress remoteAddr = socket.getRemoteSocketAddress();
-        System.out.println("Connected to: " + remoteAddr);
-        // register channel with selector for further IO
+        XMPPProxyLogger.getInstance().debug("Accepted new client connection from " + remoteAddr);
         channel.register(this.selector, SelectionKey.OP_READ);
         connectionsMap.put(channel, new ProxyConnection(channel));
         clientToServerChannelMap.put(channel, Optional.fromNullable(serverChannelWillBeHere));
     }
     
-    //read from the socket channel
+    // Read from the socket channel
     private void read(SelectionKey key) throws IOException {
         SocketChannel channel = (SocketChannel) key.channel();
         ByteBuffer buffer = ByteBuffer.allocate(1024*100);
@@ -113,9 +113,9 @@ public class SocketServer {
         numRead = channel.read(buffer);
 
         if (numRead == -1) {
-            Socket socket = channel.socket();
-            SocketAddress remoteAddr = socket.getRemoteSocketAddress();
-            System.out.println("Connection closed by client: " + remoteAddr);
+//            Socket socket = channel.socket();
+//            SocketAddress remoteAddr = socket.getRemoteSocketAddress();
+            XMPPProxyLogger.getInstance().warn("Connection closed by client");
             channel.close();
             key.cancel();
             return;
@@ -135,9 +135,6 @@ public class SocketServer {
             } else {
             	String fromJid = getFromJid(channel, stringRead);
             	if (SilentUser.getInstance().filterMessage(stringRead, fromJid)) {
-            		// moverlo a otro lado
-            		// solo mostrar error cuando mando con un user silenciado no?
-            		
             		String message = "<message from='admin@xmpp-proxy' to='" + fromJid + "' type='error'>" +
             				"<body>Estas silenciado vieja</body>" +
             				"<error code='405' type='cancel'>" +
@@ -145,6 +142,7 @@ public class SocketServer {
             				"</error>" + 
             			"</message>";
             		sendToClient(message, channel);
+            		XMPPProxyLogger.getInstance().info("Message from " + fromJid + " filtered");
             	} else {
             		sendToServer(stringRead, channel);
             	}
@@ -156,22 +154,40 @@ public class SocketServer {
     	try {
 	    	if (channelIsServerSide(channel)) {
 	    		SocketChannel clientChannel = serverToClientChannelMap.get(channel);
+    			String serverLocalAddress = channel.getLocalAddress().toString();
+    			String serverRemoteAddress = channel.getRemoteAddress().toString();
 	    		serverToClientChannelMap.remove(channel);
 	    		channel.close();
+	    		XMPPProxyLogger.getInstance().debug("XMPP Proxy[" + serverLocalAddress + "] to XMPP Server[" + serverRemoteAddress + "] socket closed");
+	    		
+
+    			String clientLocalAddress = clientChannel.getLocalAddress().toString();
+    			String clientRemoteAddress = clientChannel.getRemoteAddress().toString();
 	    		clientToServerChannelMap.remove(clientChannel);
 				clientChannel.close();
+				XMPPProxyLogger.getInstance().debug("Client[" + clientLocalAddress + "] to XMPP Proxy[" + clientRemoteAddress + "] socket closed");
+				XMPPProxyLogger.getInstance().info("Client " + connectionsMap.get(channel).getJid() + " have disconnected");
+
 	    	} else {
 	    		Optional<SocketChannel> maybeServerChannel = clientToServerChannelMap.get(channel);
 	    		if (maybeServerChannel.isPresent()) {
 	    			SocketChannel serverChannel = maybeServerChannel.get();
 	    			serverToClientChannelMap.remove(serverChannel);
+	    			String serverLocalAddress = serverChannel.getLocalAddress().toString();
+	    			String serverRemoteAddress = serverChannel.getRemoteAddress().toString();
 	    			serverChannel.close();
+	    			XMPPProxyLogger.getInstance().debug("XMPP Proxy[" + serverLocalAddress + "] to XMPP Server[" + serverRemoteAddress + "] socket closed");
 	    		}
+    			String clientLocalAddress = channel.getLocalAddress().toString();
+    			String clientRemoteAddress = channel.getRemoteAddress().toString();
 	    		clientToServerChannelMap.remove(channel);
 	    		channel.close();
+	    		XMPPProxyLogger.getInstance().debug("Client[" + clientLocalAddress + "] to XMPP Proxy[" + clientRemoteAddress + "] socket closed");
+	    		XMPPProxyLogger.getInstance().info("Client " + connectionsMap.get(channel).getJid() + " have disconnected");
 	    	}
     	} catch (IOException e) {
-    		System.out.println("no le gusto que cerremos los channels..");
+    		//System.out.println("no le gusto que cerremos los channels..");
+    		XMPPProxyLogger.getInstance().error("Error closing server and client channels");
 			e.printStackTrace();
 		}
     }
@@ -203,10 +219,11 @@ public class SocketServer {
         try {
 			channel.write(buffer);
 		} catch (IOException e) {
-			System.out.println("la comimos cuando estabamos escribiendo..lol");
+			XMPPProxyLogger.getInstance().warn("Connection closed by client");
+			
 		}
-        String clientOrServer = channelIsServerSide(channel) ? "server" : "client"; 
-        System.out.println("Escribiendo al " + clientOrServer + " xmpp..");
+        //String clientOrServer = channelIsServerSide(channel) ? "server" : "client"; 
+        //System.out.println("Escribiendo al " + clientOrServer + " xmpp..");
         buffer.clear();
     }
     
@@ -217,6 +234,7 @@ public class SocketServer {
         		if (toAttr.contains("@")) {
         			String jid = toAttr.split("/")[0];
         			connectionsMap.get(channel).setJid(jid);
+        			XMPPProxyLogger.getInstance().info("Client " + jid + " have connected");
         			return jid;
         		}
     		}
