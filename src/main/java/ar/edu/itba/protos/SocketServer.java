@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import ar.edu.itba.filters.SilentUser;
 import ar.edu.itba.filters.Transformations;
+import ar.edu.itba.logger.XMPPProxyLogger;
 import ar.edu.itba.stanza.Stanza;
 import ar.edu.itba.utils.Utils;
 
@@ -61,7 +62,7 @@ public class SocketServer {
         serverChannel.socket().bind(listenAddress);
         serverChannel.register(this.selector, SelectionKey.OP_ACCEPT);
         
-        System.out.println("Server started...");
+        XMPPProxyLogger.getInstance().debug("Server started");
 
         while (true) {
             // wait for events
@@ -90,21 +91,20 @@ public class SocketServer {
         }
     }
 
-    //accept a connection made to this channel's socket
+    // Accept a connection made to this channel's socket
     private void accept(SelectionKey key) throws IOException {
         ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
         SocketChannel channel = serverChannel.accept();
         channel.configureBlocking(false);
         Socket socket = channel.socket();
         SocketAddress remoteAddr = socket.getRemoteSocketAddress();
-        System.out.println("Connected to: " + remoteAddr);
-        // register channel with selector for further IO
+        XMPPProxyLogger.getInstance().debug("Accepted new client connection from " + remoteAddr);
         channel.register(this.selector, SelectionKey.OP_READ);
         connectionsMap.put(channel, new ProxyConnection(channel));
         clientToServerChannelMap.put(channel, Optional.fromNullable(serverChannelWillBeHere));
     }
     
-    //read from the socket channel
+    // Read from the socket channel
     private void read(SelectionKey key) throws IOException {
         SocketChannel channel = (SocketChannel) key.channel();
         ByteBuffer buffer = ByteBuffer.allocate(1024*100);
@@ -115,6 +115,7 @@ public class SocketServer {
             Socket socket = channel.socket();
             SocketAddress remoteAddr = socket.getRemoteSocketAddress();
             System.out.println("Connection closed by client: " + remoteAddr);
+            XMPPProxyLogger.getInstance().debug("Connection closed by client " + remoteAddr);
             channel.close();
             key.cancel();
             return;
@@ -133,9 +134,7 @@ public class SocketServer {
             	sendToClient(stringRead, serverToClientChannelMap.get(channel));
             } else {
             	String fromJid = getFromJid(channel, stringRead);
-//            	Utils.regexRead(stringRead, ).group(1)
             	if (SilentUser.getInstance().filterMessage(stringRead, fromJid)) {
-            		// TODO HANDLE ERROR
             		System.out.println("Estas silenciado vieja");
             	} else {
             		sendToServer(stringRead, channel);
@@ -164,6 +163,8 @@ public class SocketServer {
 	    	}
     	} catch (IOException e) {
     		System.out.println("no le gusto que cerremos los channels..");
+    		// TODO error mas copado
+    		XMPPProxyLogger.getInstance().error("Error closing channels");
 			e.printStackTrace();
 		}
     }
@@ -196,6 +197,7 @@ public class SocketServer {
 			channel.write(buffer);
 		} catch (IOException e) {
 			System.out.println("la comimos cuando estabamos escribiendo..lol");
+			
 		}
         String clientOrServer = channelIsServerSide(channel) ? "server" : "client"; 
         System.out.println("Escribiendo al " + clientOrServer + " xmpp..");
