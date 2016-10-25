@@ -28,7 +28,7 @@
 
    1.6.  Métricas
 
-   **1.7.  Multiplexador de Cuentas**
+   1.7.  Multiplexador de Cuentas
 
    **1.8.  Silenciar usuarios**
 
