@@ -112,9 +112,9 @@ public class SocketServer {
         numRead = channel.read(buffer);
 
         if (numRead == -1) {
-            Socket socket = channel.socket();
-            SocketAddress remoteAddr = socket.getRemoteSocketAddress();
-            XMPPProxyLogger.getInstance().debug("Connection closed by client " + remoteAddr);
+//            Socket socket = channel.socket();
+//            SocketAddress remoteAddr = socket.getRemoteSocketAddress();
+            XMPPProxyLogger.getInstance().warn("Connection closed by client");
             channel.close();
             key.cancel();
             return;
@@ -214,7 +214,7 @@ public class SocketServer {
 			XMPPProxyLogger.getInstance().warn("Connection closed by client");
 			
 		}
-        String clientOrServer = channelIsServerSide(channel) ? "server" : "client"; 
+        //String clientOrServer = channelIsServerSide(channel) ? "server" : "client"; 
         //System.out.println("Escribiendo al " + clientOrServer + " xmpp..");
         buffer.clear();
     }
