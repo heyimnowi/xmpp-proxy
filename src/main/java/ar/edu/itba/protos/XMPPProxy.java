@@ -127,7 +127,7 @@ public class XMPPProxy {
         byte[] data = new byte[numRead];
         System.arraycopy(buffer.array(), 0, data, 0, numRead); 
         String stringRead = new String(data);
-        System.out.println("Got: " + stringRead);
+        //System.out.println("Got: " + stringRead);
         
         if (stringRead.equals(XMPP_FINAL_MESSAGE)) {
         	closeBothChannels(channel);

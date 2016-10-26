@@ -6,7 +6,7 @@ public class UserMetrics {
 	private long bytesReceived;
 	private long accesses;
 	
-	public UserMetrics(){
+	public UserMetrics() {
 		this.bytesReceived = 0;
 		this.bytesSent = 0;
 		this.accesses = 0;
