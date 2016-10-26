@@ -16,19 +16,16 @@ import ar.edu.itba.admin.ProxyConfiguration;
 import ar.edu.itba.filters.SilentUser;
 import ar.edu.itba.filters.Transformations;
 import ar.edu.itba.logger.XMPPProxyLogger;
+import ar.edu.itba.metrics.MetricsCollector;
 import ar.edu.itba.stanza.Stanza;
 import ar.edu.itba.utils.Utils;
-
-import com.google.common.base.Optional;
 
 public class XMPPProxy {
 	
 	private Selector selector;
     private InetSocketAddress listenAddress;
-    private SocketChannel serverChannelWillBeHere = null;
-    private ConcurrentHashMap<SocketChannel, ProxyConnection> connectionsMap = new ConcurrentHashMap<SocketChannel, ProxyConnection>();
-    private ConcurrentHashMap<SocketChannel, Optional<SocketChannel>> clientToProxyChannelMap = new ConcurrentHashMap<SocketChannel, Optional<SocketChannel>>();
-    private ConcurrentHashMap<SocketChannel, SocketChannel> proxyToClientChannelMap = new ConcurrentHashMap<SocketChannel, SocketChannel>();
+    private ConcurrentHashMap<SocketChannel, ProxyConnection> clientToProxyChannelMap = new ConcurrentHashMap<SocketChannel, ProxyConnection>();
+    private ConcurrentHashMap<SocketChannel, ProxyConnection> proxyToClientChannelMap = new ConcurrentHashMap<SocketChannel, ProxyConnection>();
     private final static String XMPP_FINAL_MESSAGE = "</stream:stream>";
     private final static int BUFFER_SIZE = 1024*100;
     
@@ -106,8 +103,7 @@ public class XMPPProxy {
         SocketAddress localAddr = socket.getLocalSocketAddress();
         XMPPProxyLogger.getInstance().debug("Accepted new client connection from " + localAddr + " to " + remoteAddr);
         channel.register(this.selector, SelectionKey.OP_READ);
-        connectionsMap.put(channel, new ProxyConnection(channel));
-        clientToProxyChannelMap.put(channel, Optional.fromNullable(serverChannelWillBeHere));
+        clientToProxyChannelMap.put(channel, new ProxyConnection(channel));
     }
     
     /**
@@ -137,9 +133,10 @@ public class XMPPProxy {
         	closeBothChannels(channel);
         } else {
         	if (channelIsServerSide(channel)) {
-            	sendToClient(stringRead, proxyToClientChannelMap.get(channel));
+        		getToJid(proxyToClientChannelMap.get(channel), stringRead);
+            	sendToClient(stringRead, proxyToClientChannelMap.get(channel).getClientChannel());
             } else {
-            	String fromJid = getFromJid(channel, stringRead);
+            	String fromJid = clientToProxyChannelMap.get(channel).getJid();
             	if (SilentUser.getInstance().filterMessage(stringRead, fromJid)) {
             		sendToClient(SilentUser.getInstance().getErrorMessage(fromJid), channel);
             		XMPPProxyLogger.getInstance().info("Message from " + fromJid + " filtered");
@@ -155,38 +152,28 @@ public class XMPPProxy {
      * @param channel
      */
     private void closeBothChannels(SocketChannel channel) {
-    	try {
-	    	if (channelIsServerSide(channel)) {
-	    		SocketChannel clientChannel = proxyToClientChannelMap.get(channel);
-    			String serverLocalAddress = channel.getLocalAddress().toString();
-    			String serverRemoteAddress = channel.getRemoteAddress().toString();
-	    		proxyToClientChannelMap.remove(channel);
-	    		channel.close();
+    	if (channelIsServerSide(channel)) {
+    		closeProxy(proxyToClientChannelMap.get(channel));
+    	}else{
+    		closeProxy(clientToProxyChannelMap.get(channel));
+    	}
+    }
+    
+    private void closeProxy(ProxyConnection proxy){
+    	try{
+    		String clientLocalAddress = proxy.getClientChannel().getLocalAddress().toString();
+			String clientRemoteAddress = proxy.getClientChannel().getRemoteAddress().toString();
+			String jid = proxy.getJid();
+    		clientToProxyChannelMap.remove(proxy.getClientChannel());
+	    	proxy.getClientChannel().close();
+	    	XMPPProxyLogger.getInstance().debug("Client[" + clientLocalAddress + "] to XMPP Proxy[" + clientRemoteAddress + "] socket closed");
+			XMPPProxyLogger.getInstance().info("Client " + jid + " has disconnected");
+	    	if(proxy.getServerChannel()!=null){
+	    		String serverLocalAddress = proxy.getServerChannel().getLocalAddress().toString();
+				String serverRemoteAddress = proxy.getServerChannel().getRemoteAddress().toString();
+	    		proxyToClientChannelMap.remove(proxy.getServerChannel());
+	    		proxy.getServerChannel().close();
 	    		XMPPProxyLogger.getInstance().debug("XMPP Proxy[" + serverLocalAddress + "] to XMPP Server[" + serverRemoteAddress + "] socket closed");
-	    		
-    			String clientLocalAddress = clientChannel.getLocalAddress().toString();
-    			String clientRemoteAddress = clientChannel.getRemoteAddress().toString();
-	    		clientToProxyChannelMap.remove(clientChannel);
-				clientChannel.close();
-				XMPPProxyLogger.getInstance().debug("Client[" + clientLocalAddress + "] to XMPP Proxy[" + clientRemoteAddress + "] socket closed");
-				XMPPProxyLogger.getInstance().info("Client " + connectionsMap.get(channel).getJid() + " have disconnected");
-
-	    	} else {
-	    		Optional<SocketChannel> maybeServerChannel = clientToProxyChannelMap.get(channel);
-	    		if (maybeServerChannel.isPresent()) {
-	    			SocketChannel serverChannel = maybeServerChannel.get();
-	    			proxyToClientChannelMap.remove(serverChannel);
-	    			String serverLocalAddress = serverChannel.getLocalAddress().toString();
-	    			String serverRemoteAddress = serverChannel.getRemoteAddress().toString();
-	    			serverChannel.close();
-	    			XMPPProxyLogger.getInstance().debug("XMPP Proxy[" + serverLocalAddress + "] to XMPP Server[" + serverRemoteAddress + "] socket closed");
-	    		}
-    			String clientLocalAddress = channel.getLocalAddress().toString();
-    			String clientRemoteAddress = channel.getRemoteAddress().toString();
-	    		clientToProxyChannelMap.remove(channel);
-	    		channel.close();
-	    		XMPPProxyLogger.getInstance().debug("Client[" + clientLocalAddress + "] to XMPP Proxy[" + clientRemoteAddress + "] socket closed");
-	    		XMPPProxyLogger.getInstance().info("Client " + connectionsMap.get(channel).getJid() + " have disconnected");
 	    	}
     	} catch (IOException e) {
     		XMPPProxyLogger.getInstance().error("Error closing server and client channels");
@@ -219,17 +206,17 @@ public class XMPPProxy {
      * @throws IOException
      */
     private void sendToServer(String s, SocketChannel clientChannel) throws IOException {
-    	if (!clientToProxyChannelMap.get(clientChannel).isPresent()) {
+    	ProxyConnection pc = clientToProxyChannelMap.get(clientChannel);
+    	if (pc.getServerChannel() == null) {
     		InetSocketAddress hostAddress = new InetSocketAddress(ProxyConfiguration.getInstance().getProperty("xmpp_server_host"), 5222);
             SocketChannel serverChannel = SocketChannel.open(hostAddress);
             serverChannel.configureBlocking(false);
             serverChannel.register(this.selector, SelectionKey.OP_READ);
-            connectionsMap.get(clientChannel).setServerChannel(serverChannel);
-            clientToProxyChannelMap.put(clientChannel, Optional.of(serverChannel));
-            proxyToClientChannelMap.put(serverChannel, clientChannel);
+            pc.setServerChannel(serverChannel);
+            proxyToClientChannelMap.put(serverChannel, pc);
     	}
     	String newString = Transformations.getInstance().applyTransformations(s);
-        writeInChannel(newString, clientToProxyChannelMap.get(clientChannel).get());
+        writeInChannel(newString, pc.getServerChannel());
     }
     
     /**
@@ -243,28 +230,55 @@ public class XMPPProxy {
 			XMPPProxyLogger.getInstance().warn("Connection closed by client");
 			
 		}
+    	String jid;
+        if(channelIsServerSide(channel)){
+        	jid = getToJid(proxyToClientChannelMap.get(channel), s);
+        	MetricsCollector.getInstance().msgReceived(jid,s);
+        }else{
+        	jid = getFromJid(clientToProxyChannelMap.get(channel), s);
+        	MetricsCollector.getInstance().msgSent(jid, s);
+        }
         buffer.clear();
     }
     
     /**
-     * Get the client jabber id from a connection
+     * Get the client jabber id at the "from" attribute
      * @param channel
      * @param stanza
      * @return
      */
-    private String getFromJid(SocketChannel channel, String stanza) {
-    	if (connectionsMap.get(channel).getJid() == null) {
-    		if (Utils.regexMatch(stanza, "to=")) {
-    			String toAttr = Stanza.tagAttr(stanza, "to");
-        		if (toAttr.contains("@")) {
-        			String jid = toAttr.split("/")[0];
-        			connectionsMap.get(channel).setJid(jid);
-        			XMPPProxyLogger.getInstance().info("Client " + jid + " have connected");
-        			return jid;
-        		}
+    private String getFromJid(ProxyConnection proxy, String stanza) {
+    	if(proxy == null)
+    		return null;
+    	if(proxy.getJid()==null)
+    		proxy.setJid(getJid(stanza,"from"));
+    	return proxy.getJid();
+    }
+    
+    /**
+     * Get the client jabber id at the "to" attribute
+     * @param channel
+     * @param stanza
+     * @return
+     */
+    private String getToJid(ProxyConnection proxy, String stanza){
+    	if(proxy == null)
+    		return null;
+    	if(proxy.getJid()==null)
+    		proxy.setJid(getJid(stanza,"to"));
+    	return proxy.getJid();
+    }
+    
+    private String getJid(String stanza, String attr){
+		if (Utils.regexMatch(stanza, attr + "=")) {
+			String toAttr = Stanza.tagAttr(stanza, attr);
+    		if (toAttr.contains("@")) {
+    			String jid = toAttr.split("/")[0];
+    			XMPPProxyLogger.getInstance().info("Client " + jid + " has connected");
+    			return jid;
     		}
-    		return "";
-    	}
-    	return connectionsMap.get(channel).getJid();
+    		return null;
+		}
+		return null;
     }
 }
