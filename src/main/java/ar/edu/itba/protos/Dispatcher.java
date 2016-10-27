@@ -24,7 +24,7 @@ public class Dispatcher {
 		/* Get configurations */
 		String xmppProxyHost = ProxyConfiguration.getInstance().getProperty("xmpp_proxy_host");
 		int xmppPort = Integer.parseInt(ProxyConfiguration.getInstance().getProperty("xmpp_proxy_port"));
-		//int xmppAdminPort = Integer.parseInt(ProxyConfiguration.getInstance().getProperty("xmpp_proxy_admin_port"));
+		int xmppAdminPort = Integer.parseInt(ProxyConfiguration.getInstance().getProperty("xmpp_proxy_admin_port"));
 
 
 		/* Open selector */
@@ -32,7 +32,7 @@ public class Dispatcher {
 		
 		/* Instance admin and client channels */
         clientProxyHandler = new ClientProxyHandler(xmppProxyHost, xmppPort, selector);
-		//XMPPAdminProxy xmppAdminProxy = new XMPPAdminProxy(xmppProxyHost, xmppAdminPort, selector);
+        AdminProxyHandler xmppAdminProxy = new AdminProxyHandler(xmppProxyHost, xmppAdminPort, selector);
         
         /* Handlers & Channels */
         handlers = new HashMap<ServerSocketChannel, Handler>();
@@ -72,6 +72,7 @@ public class Dispatcher {
 	}
 
 	private void accept(SelectionKey key) throws IOException {
+		System.out.println("Accetp");
 		clientProxyHandler.accept(key);
 	}
 
