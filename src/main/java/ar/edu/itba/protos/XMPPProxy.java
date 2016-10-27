@@ -24,60 +24,24 @@ import ar.edu.itba.utils.Utils;
 
 public class XMPPProxy {
 	
-	private Selector selector;
 	private XMPPProxyLogger logger;
     private InetSocketAddress listenAddress;
     private ConcurrentHashMap<SocketChannel, ProxyConnection> clientToProxyChannelMap = new ConcurrentHashMap<SocketChannel, ProxyConnection>();
     private ConcurrentHashMap<SocketChannel, ProxyConnection> proxyToClientChannelMap = new ConcurrentHashMap<SocketChannel, ProxyConnection>();
+	private Selector selector;
     private final static String XMPP_FINAL_MESSAGE = "</stream:stream>";
     private final static int BUFFER_SIZE = 1024*100;
 
     public XMPPProxy(String address, int port, Selector selector) throws IOException {
-    	listenAddress = new InetSocketAddress(address, port);
-    	logger = XMPPProxyLogger.getInstance();
-    }
-
-    /**
-     * Start the XMPP Proxy
-     * @return 
-     * @throws IOException`
-     */
-    Runnable start() throws IOException {
     	System.out.println("Hola vieja");
-        this.selector = Selector.open();
+    	this.selector = selector;
+    	listenAddress = new InetSocketAddress("localhost", port);
         ServerSocketChannel proxyChannel = ServerSocketChannel.open();
         proxyChannel.configureBlocking(false);
-        
-        // retrieve server socket and bind to port
         proxyChannel.socket().bind(listenAddress);
-        proxyChannel.register(this.selector, SelectionKey.OP_ACCEPT);
+        proxyChannel.register(selector, SelectionKey.OP_ACCEPT);
+    	logger = XMPPProxyLogger.getInstance();
         logger.info("Proxy started");
-
-        while (true) {
-            // wait for events
-            this.selector.select();
-
-            //work on selected keys
-            Iterator<SelectionKey> keys = this.selector.selectedKeys().iterator();
-            while (keys.hasNext()) {
-                SelectionKey key = (SelectionKey) keys.next();
-
-                // this is necessary to prevent the same key from coming up 
-                // again the next time around.
-                keys.remove();
-
-                if (!key.isValid()) {
-                    continue;
-                }
-
-                if (key.isAcceptable()) {
-                    this.accept(key);
-                }
-                else if (key.isReadable()) {
-                    this.read(key);
-                }
-            }
-        }
     }
 
     /**
@@ -92,9 +56,9 @@ public class XMPPProxy {
         Socket socket = channel.socket();
         SocketAddress remoteAddr = socket.getRemoteSocketAddress();
         SocketAddress localAddr = socket.getLocalSocketAddress();
-        logger.debug("Accepted new client connection from " + localAddr + " to " + remoteAddr);
         channel.register(this.selector, SelectionKey.OP_READ);
         clientToProxyChannelMap.put(channel, new ProxyConnection(channel));
+        logger.debug("Accepted new client connection from " + localAddr + " to " + remoteAddr);
     }
     
     /**
