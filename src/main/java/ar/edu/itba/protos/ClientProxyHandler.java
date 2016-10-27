@@ -22,7 +22,7 @@ import ar.edu.itba.metrics.MetricsCollector;
 import ar.edu.itba.stanza.Stanza;
 import ar.edu.itba.utils.Utils;
 
-public class XMPPProxy {
+public class ClientProxyHandler implements Handler {
 	
 	private XMPPProxyLogger logger;
     private InetSocketAddress listenAddress;
@@ -31,34 +31,44 @@ public class XMPPProxy {
 	private Selector selector;
     private final static String XMPP_FINAL_MESSAGE = "</stream:stream>";
     private final static int BUFFER_SIZE = 1024*100;
+    private ServerSocketChannel channel;
 
-    public XMPPProxy(String address, int port, Selector selector) throws IOException {
+    public ClientProxyHandler(String address, int port, Selector selector) throws IOException {
     	System.out.println("Hola vieja");
     	this.selector = selector;
     	listenAddress = new InetSocketAddress("localhost", port);
-        ServerSocketChannel proxyChannel = ServerSocketChannel.open();
-        proxyChannel.configureBlocking(false);
-        proxyChannel.socket().bind(listenAddress);
-        proxyChannel.register(selector, SelectionKey.OP_ACCEPT);
+        channel = ServerSocketChannel.open();
+        channel.configureBlocking(false);
+        channel.socket().bind(listenAddress);
+        channel.register(selector, SelectionKey.OP_ACCEPT);
     	logger = XMPPProxyLogger.getInstance();
-        logger.info("Proxy started");
+        logger.info("Client proxy started");
     }
 
-    /**
+    public ServerSocketChannel getProxyChannel() {
+		return channel;
+	}
+
+	public void setProxyChannel(ServerSocketChannel proxyChannel) {
+		this.channel = proxyChannel;
+	}
+
+	/**
      * Accept connections to XMPP Proxy
      * @param key
      * @throws IOException
      */
-    private void accept(SelectionKey key) throws IOException {
-        ServerSocketChannel proxyChannel = (ServerSocketChannel) key.channel();
-        SocketChannel channel = proxyChannel.accept();
-        channel.configureBlocking(false);
-        Socket socket = channel.socket();
+    public ServerSocketChannel accept(SelectionKey key) throws IOException {
+        ServerSocketChannel keyChannel = (ServerSocketChannel) key.channel();
+        SocketChannel newChannel = keyChannel.accept();
+        newChannel.configureBlocking(false);
+        Socket socket = newChannel.socket();
         SocketAddress remoteAddr = socket.getRemoteSocketAddress();
         SocketAddress localAddr = socket.getLocalSocketAddress();
-        channel.register(this.selector, SelectionKey.OP_READ);
-        clientToProxyChannelMap.put(channel, new ProxyConnection(channel));
-        logger.debug("Accepted new client connection from " + localAddr + " to " + remoteAddr);
+        XMPPProxyLogger.getInstance().debug("Accepted new client connection from " + localAddr + " to " + remoteAddr);
+        newChannel.register(this.selector, SelectionKey.OP_READ);
+        clientToProxyChannelMap.put(newChannel, new ProxyConnection(newChannel));
+        return keyChannel;
     }
     
     /**
@@ -66,15 +76,15 @@ public class XMPPProxy {
      * @param key
      * @throws IOException
      */
-    private void read(SelectionKey key) throws IOException {
-        SocketChannel channel = (SocketChannel) key.channel();
+    public void read(SelectionKey key) throws IOException {
+        SocketChannel keyChannel = (SocketChannel) key.channel();
         ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
         int numRead = -1;
-        numRead = channel.read(buffer);
+        numRead = keyChannel.read(buffer);
 
         if (numRead == -1) {
-            logger.warn("Connection closed by client");
-            channel.close();
+            XMPPProxyLogger.getInstance().warn("Connection closed by client");
+            keyChannel.close();
             key.cancel();
             return;
         }
@@ -82,21 +92,21 @@ public class XMPPProxy {
         byte[] data = new byte[numRead];
         System.arraycopy(buffer.array(), 0, data, 0, numRead); 
         String stringRead = new String(data);
-        //System.out.println("Got: " + stringRead);
+        System.out.println("Got: " + stringRead);
         
         if (stringRead.equals(XMPP_FINAL_MESSAGE)) {
-        	closeBothChannels(channel);
+        	closeBothChannels(keyChannel);
         } else {
-        	if (channelIsServerSide(channel)) {
-        		getToJid(proxyToClientChannelMap.get(channel), stringRead);
-            	sendToClient(stringRead, proxyToClientChannelMap.get(channel).getClientChannel());
+        	if (channelIsServerSide(keyChannel)) {
+        		getToJid(proxyToClientChannelMap.get(keyChannel), stringRead);
+            	sendToClient(stringRead, proxyToClientChannelMap.get(keyChannel).getClientChannel());
             } else {
-            	String fromJid = clientToProxyChannelMap.get(channel).getJid();
+            	String fromJid = clientToProxyChannelMap.get(keyChannel).getJid();
             	if (SilentUser.getInstance().filterMessage(stringRead, fromJid)) {
-            		sendToClient(SilentUser.getInstance().getErrorMessage(fromJid), channel);
-            		logger.info("Message from " + fromJid + " filtered");
+            		sendToClient(SilentUser.getInstance().getErrorMessage(fromJid), keyChannel);
+            		XMPPProxyLogger.getInstance().info("Message from " + fromJid + " filtered");
             	} else {
-            		sendToServer(stringRead, channel);
+            		sendToServer(stringRead, keyChannel);
             	}
             }
         }
@@ -177,7 +187,7 @@ public class XMPPProxy {
     /**
      * Write data to a specific channel
      */
-    private void writeInChannel(String s, SocketChannel channel) {
+    public void writeInChannel(String s, SocketChannel channel) {
     	ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
         try {
 			channel.write(buffer);
@@ -236,4 +246,6 @@ public class XMPPProxy {
 		}
 		return null;
     }
+
+
 }
