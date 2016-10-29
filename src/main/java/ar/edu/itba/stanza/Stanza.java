@@ -1,5 +1,6 @@
 package ar.edu.itba.stanza;
 
+import ar.edu.itba.admin.ProxyConfiguration;
 import ar.edu.itba.utils.Utils;
 
 public class Stanza {
@@ -34,6 +35,17 @@ public class Stanza {
 	 */
 	public static boolean isChatMessage(String s) {
 		return s.contains(BODY_TAG);
+	}
+	
+	public static String errorMessage(String condition, String type, String code,
+			String jid, String message) {
+		String admin = ProxyConfiguration.getInstance().getProperty("admin");;
+		return "<message type='error'>" +
+				"<body>"+ message +"</body>" +
+				"<error code='"+ code +"' type='"+ type +"'>" +
+					"<"+condition+" xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>" +
+				"</error>" + 
+			"</message>";
 	}
 
 }

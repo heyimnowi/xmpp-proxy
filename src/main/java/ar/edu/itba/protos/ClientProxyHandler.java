@@ -5,10 +5,14 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousCloseException;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.channels.UnresolvedAddressException;
+import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.concurrent.ConcurrentHashMap;
 
 import ar.edu.itba.admin.ProxyConfiguration;
@@ -33,7 +37,7 @@ public class ClientProxyHandler implements Handler {
     public ClientProxyHandler(String address, int port, Selector selector) throws IOException {
     	System.out.println("Hola vieja");
     	this.selector = selector;
-    	listenAddress = new InetSocketAddress("localhost", port);
+    	listenAddress = new InetSocketAddress(address, port);
         channel = ServerSocketChannel.open();
         channel.configureBlocking(false);
         channel.socket().bind(listenAddress);
@@ -77,7 +81,7 @@ public class ClientProxyHandler implements Handler {
         SocketChannel keyChannel = (SocketChannel) key.channel();
         ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
         int numRead = -1;
-        numRead = keyChannel.read(buffer);
+        numRead = keyChannel.read(buffer); // TODO catch IO exception
 
         if (numRead == -1) {
             XMPPProxyLogger.getInstance().warn("Connection closed by client");
@@ -167,18 +171,41 @@ public class ClientProxyHandler implements Handler {
      * @param clientChannel
      * @throws IOException
      */
-    private void sendToServer(String s, SocketChannel clientChannel) throws IOException {
+    private void sendToServer(String s, SocketChannel clientChannel) {
     	ProxyConnection pc = clientToProxyChannelMap.get(clientChannel);
-    	if (pc.getServerChannel() == null) {
-    		InetSocketAddress hostAddress = new InetSocketAddress(ProxyConfiguration.getInstance().getProperty("xmpp_server_host"), 5222);
-            SocketChannel serverChannel = SocketChannel.open(hostAddress);
-            serverChannel.configureBlocking(false);
-            serverChannel.register(this.selector, SelectionKey.OP_READ);
-            pc.setServerChannel(serverChannel);
-            proxyToClientChannelMap.put(serverChannel, pc);
+    	try {
+	    	if (pc.getServerChannel() == null) {
+	    		// aca multiplexas en base al jid
+	    		InetSocketAddress hostAddress = new InetSocketAddress(ProxyConfiguration.getInstance().getProperty("xmpp_server_host"), 5222);
+	            SocketChannel serverChannel = SocketChannel.open(hostAddress);
+	            serverChannel.configureBlocking(false);
+	            serverChannel.register(this.selector, SelectionKey.OP_READ);
+	            pc.setServerChannel(serverChannel);
+	            proxyToClientChannelMap.put(serverChannel, pc);
+	    	}
+	    	String newString = Transformations.getInstance().applyTransformations(s);
+	        writeInChannel(newString, pc.getServerChannel());
     	}
-    	String newString = Transformations.getInstance().applyTransformations(s);
-        writeInChannel(newString, pc.getServerChannel());
+        catch(ClosedByInterruptException e) {
+  	      System.out.println("ClosedByInterruptException");
+	    }
+	    catch(AsynchronousCloseException e) {
+	    	  System.out.println("AsynchronousCloseException");
+	    }
+	    catch(UnresolvedAddressException e) {
+	      System.out.println("UnresolvedAddressException");
+	      String error = Stanza.errorMessage("not-allowed", "cancel", "405", pc.getJid(), "Servidor no encontrado");
+	      writeInChannel(error, pc.getClientChannel());
+	    }
+	    catch(UnsupportedAddressTypeException e) {
+	    	System.out.println("UnsupportedAddressTypeException");
+	    }
+	    catch(SecurityException e) {
+	    	System.out.println("SecurityException");
+	    }
+	    catch(IOException e) {
+	    	System.out.println("IOException");
+	    }
     }
     
     /**
@@ -243,6 +270,5 @@ public class ClientProxyHandler implements Handler {
 		}
 		return null;
     }
-
 
 }

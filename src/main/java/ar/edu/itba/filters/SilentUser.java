@@ -51,11 +51,6 @@ public class SilentUser {
 	 * @return
 	 */
 	public String getErrorMessage(String fromJid) {
-		return "<message from='admin@xmpp-proxy' to='" + fromJid + "' type='error'>" +
-				"<body>Estas silenciado vieja</body>" +
-				"<error code='405' type='cancel'>" +
-					"<not-allowed xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>" +
-				"</error>" + 
-			"</message>";
+		return Stanza.errorMessage("not-allowed", "cancel", "405",fromJid, "Estas silenciado vieja");
 	}
 }
