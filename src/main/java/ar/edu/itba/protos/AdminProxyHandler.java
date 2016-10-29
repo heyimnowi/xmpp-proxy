@@ -2,11 +2,14 @@ package ar.edu.itba.protos;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+
 import ar.edu.itba.logger.XMPPProxyLogger;
 
 public class AdminProxyHandler implements Handler {
@@ -15,15 +18,16 @@ public class AdminProxyHandler implements Handler {
 	private XMPPProxyLogger logger;
 	private Selector selector;
 	private final static int BUFFER_SIZE = 1024*100;
+	private ServerSocketChannel adminChannel;
 	
     public AdminProxyHandler(String address, int port, Selector selector) throws IOException {
     	System.out.println("Hola admin");
     	this.selector = selector;
     	listenAddress = new InetSocketAddress(address, port);
-        ServerSocketChannel proxyChannel = ServerSocketChannel.open();
-        proxyChannel.configureBlocking(false);
-        proxyChannel.socket().bind(listenAddress);
-        proxyChannel.register(selector, SelectionKey.OP_ACCEPT);
+        adminChannel = ServerSocketChannel.open();
+        adminChannel.configureBlocking(false);
+        adminChannel.socket().bind(listenAddress);
+        adminChannel.register(this.selector, SelectionKey.OP_ACCEPT);
     	logger = XMPPProxyLogger.getInstance();
         logger.info("Admin proxy started");
     }
@@ -55,13 +59,19 @@ public class AdminProxyHandler implements Handler {
 		
 	}
 
-	public ServerSocketChannel getProxyChannel() {
-		// TODO Auto-generated method stub
-		return null;
+	public ServerSocketChannel getChannel() {
+		return adminChannel;
 	}
 
-	public ServerSocketChannel accept(SelectionKey key) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+	public SocketChannel accept(SelectionKey key) throws IOException {
+		ServerSocketChannel keyChannel = (ServerSocketChannel) key.channel();
+        SocketChannel newChannel = keyChannel.accept();
+        newChannel.configureBlocking(false);
+        Socket socket = newChannel.socket();
+        SocketAddress remoteAddr = socket.getRemoteSocketAddress();
+        SocketAddress localAddr = socket.getLocalSocketAddress();
+        XMPPProxyLogger.getInstance().debug("Accepted new client connection from " + localAddr + " to " + remoteAddr);
+        newChannel.register(this.selector, SelectionKey.OP_READ);
+        return newChannel;
 	}
 }

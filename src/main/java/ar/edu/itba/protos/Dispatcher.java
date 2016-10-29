@@ -1,12 +1,12 @@
 package ar.edu.itba.protos;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.AbstractSelectableChannel;
+import java.nio.channels.spi.SelectorProvider;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -17,7 +17,8 @@ public class Dispatcher {
 	
 	private Selector selector;
 	private ClientProxyHandler clientProxyHandler;
-	private Map<ServerSocketChannel, Handler> handlers;
+	private AdminProxyHandler adminProxyHandler;
+	private Map<ServerSocketChannel, Handler> handlers = new HashMap<ServerSocketChannel, Handler>(2); // only admin and client channels
 
 	public void runProxy () throws IOException {
 		
@@ -32,12 +33,12 @@ public class Dispatcher {
 		
 		/* Instance admin and client channels */
         clientProxyHandler = new ClientProxyHandler(xmppProxyHost, xmppPort, selector);
-        AdminProxyHandler xmppAdminProxy = new AdminProxyHandler(xmppProxyHost, xmppAdminPort, selector);
+        adminProxyHandler = new AdminProxyHandler(xmppProxyHost, xmppAdminPort, selector);
         
-        /* Handlers & Channels */
-        handlers = new HashMap<ServerSocketChannel, Handler>();
-        handlers.put(clientProxyHandler.getProxyChannel(), clientProxyHandler);
-
+        /* Handler mapping */
+        handlers.put(clientProxyHandler.getChannel(), clientProxyHandler);
+        handlers.put(adminProxyHandler.getChannel(), adminProxyHandler);
+        
         while (true) {
             // wait for events
             this.selector.select();
@@ -68,12 +69,20 @@ public class Dispatcher {
 	}
 	
 	private void read(SelectionKey key) throws IOException {
-		clientProxyHandler.read(key);
+		Handler handler = getHandlerFromKey(key);
+		handler.read(key);
 	}
 
 	private void accept(SelectionKey key) throws IOException {
-		System.out.println("Accetp");
-		clientProxyHandler.accept(key);
+		handlers.get(key.channel()).accept(key);
 	}
-
+	
+	private Handler getHandlerFromKey(SelectionKey key) throws IOException {
+		Handler handler = clientProxyHandler;
+		SocketChannel socketChannel = (SocketChannel) key.channel();
+		if (socketChannel.getLocalAddress().equals(adminProxyHandler.getChannel().getLocalAddress())) {
+			handler = adminProxyHandler;
+		}
+		return handler;
+	}
 }

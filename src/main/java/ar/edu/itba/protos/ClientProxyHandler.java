@@ -9,10 +9,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
-
-import org.slf4j.Logger;
 
 import ar.edu.itba.admin.ProxyConfiguration;
 import ar.edu.itba.filters.SilentUser;
@@ -45,12 +42,12 @@ public class ClientProxyHandler implements Handler {
         logger.info("Client proxy started");
     }
 
-    public ServerSocketChannel getProxyChannel() {
+	public ServerSocketChannel getChannel() {
 		return channel;
 	}
 
-	public void setProxyChannel(ServerSocketChannel proxyChannel) {
-		this.channel = proxyChannel;
+	public void setChannel(ServerSocketChannel channel) {
+		this.channel = channel;
 	}
 
 	/**
@@ -58,7 +55,7 @@ public class ClientProxyHandler implements Handler {
      * @param key
      * @throws IOException
      */
-    public ServerSocketChannel accept(SelectionKey key) throws IOException {
+    public SocketChannel accept(SelectionKey key) throws IOException {
         ServerSocketChannel keyChannel = (ServerSocketChannel) key.channel();
         SocketChannel newChannel = keyChannel.accept();
         newChannel.configureBlocking(false);
@@ -68,7 +65,7 @@ public class ClientProxyHandler implements Handler {
         XMPPProxyLogger.getInstance().debug("Accepted new client connection from " + localAddr + " to " + remoteAddr);
         newChannel.register(this.selector, SelectionKey.OP_READ);
         clientToProxyChannelMap.put(newChannel, new ProxyConnection(newChannel));
-        return keyChannel;
+        return newChannel;
     }
     
     /**
