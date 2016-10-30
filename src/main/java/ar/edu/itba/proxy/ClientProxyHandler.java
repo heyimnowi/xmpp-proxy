@@ -15,7 +15,9 @@ import java.nio.channels.UnresolvedAddressException;
 import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.concurrent.ConcurrentHashMap;
 
-import ar.edu.itba.config.ProxyConfiguration;
+import org.apache.commons.codec.binary.Base64;
+
+import ar.edu.itba.filters.Multiplexing;
 import ar.edu.itba.filters.SilentUser;
 import ar.edu.itba.filters.Transformations;
 import ar.edu.itba.logger.XMPPProxyLogger;
@@ -80,10 +82,10 @@ public class ClientProxyHandler implements Handler {
         SocketChannel keyChannel = (SocketChannel) key.channel();
         ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
         int numRead = -1;
-        numRead = keyChannel.read(buffer); // TODO catch IO exception
-
+        numRead = keyChannel.read(buffer); // TODO catch java.io.IOException: Connection reset by peer
+        String side = channelIsServerSide(keyChannel) ? "server" : "client";
         if (numRead == -1) {
-            XMPPProxyLogger.getInstance().warn("Connection closed by client");
+            XMPPProxyLogger.getInstance().warn("Connection closed by " + side);
             keyChannel.close();
             key.cancel();
             return;
@@ -92,27 +94,70 @@ public class ClientProxyHandler implements Handler {
         byte[] data = new byte[numRead];
         System.arraycopy(buffer.array(), 0, data, 0, numRead); 
         String stringRead = new String(data);
-        System.out.println("Got: " + stringRead);
-        
+        System.out.println(side + " wrote: " + stringRead);
         if (stringRead.equals(XMPP_FINAL_MESSAGE)) {
         	closeBothChannels(keyChannel);
         } else {
         	if (channelIsServerSide(keyChannel)) {
-        		getToJid(proxyToClientChannelMap.get(keyChannel), stringRead);
-            	sendToClient(stringRead, proxyToClientChannelMap.get(keyChannel).getClientChannel());
+        		ProxyConnection connection = proxyToClientChannelMap.get(keyChannel);
+        		getToJid(connection, stringRead);
+        		if (connection.isUserRecognized()) {
+        			sendToClient(stringRead, connection.getClientChannel());
+        		} else if (connection.isTryingToRegister() && !isInitialMessage(stringRead)) {
+        			// when registration happens, server sends 2 messages, client already got the first one from us when we faked it
+        			sendToClient(stringRead, connection.getClientChannel());
+        		}
             } else {
-            	String fromJid = clientToProxyChannelMap.get(keyChannel).getJid();
-            	if (SilentUser.getInstance().filterMessage(stringRead, fromJid)) {
-            		sendToClient(SilentUser.getInstance().getErrorMessage(fromJid), keyChannel);
-            		XMPPProxyLogger.getInstance().info("Message from " + fromJid + " filtered");
+            	ProxyConnection connection = clientToProxyChannelMap.get(keyChannel);
+            	if (!connection.isUserRecognized() && !userTryingToRegister(stringRead)) {
+            		handleUnknownUser(connection, stringRead);
             	} else {
-            		sendToServer(stringRead, keyChannel);
+            		if (userTryingToRegister(stringRead) && !userIsSendingRegistrationValues(stringRead)) {
+            			connection.setTryingToRegister(true);
+            			sendToServer(Stanza.initialStanza(), connection);
+            			sendToServer(stringRead, connection);
+            		} else {
+            			String fromJid = connection.getJid();
+            			if (SilentUser.getInstance().filterMessage(stringRead, fromJid)) {
+            				sendToClient(SilentUser.getInstance().getErrorMessage(fromJid), keyChannel);
+            				XMPPProxyLogger.getInstance().info("Message from " + fromJid + " filtered");
+            			} else {
+            				sendToServer(stringRead, connection);
+            			}
+            		}
             	}
             }
         }
     }
     
-    /**
+    private boolean userIsSendingRegistrationValues(String stringRead) {
+		return Utils.regexMatch(stringRead, "jabber:iq:register.*type=.submit");
+	}
+
+	private boolean isInitialMessage(String stringRead) {
+		return Utils.regexMatch(stringRead, "<stream:stream.*xmlns=.jabber:client");
+	}
+
+	private boolean userTryingToRegister(String stringRead) {
+		return Utils.regexMatch(stringRead, "register");
+	}
+
+	private void handleUnknownUser(ProxyConnection connection, String stringRead) {
+		if (Utils.regexMatch(stringRead, Stanza.CLIENT_AUTH_PATTERN)) {
+        	String auth64 = Utils.regexRead(stringRead, Stanza.CLIENT_AUTH_PATTERN).group(1);
+        	byte[] authDecoded = Base64.decodeBase64(auth64);
+        	int passwordStartIndex = new String(authDecoded).indexOf('\0', 2);
+        	String username = new String(authDecoded, 1, passwordStartIndex - 1);
+        	if (username != null)
+        		XMPPProxyLogger.getInstance().info("Client " + username + " is attempting to connect");
+        	connection.setUsername(username);
+        	sendToClient(Stanza.FAKE_PLAIN_AUTH_SUCCESS, connection.getClientChannel());
+        } else {
+        	sendToClient(Stanza.FAKE_SERVER_INITIAL_PLAIN_AUTH_RESPONSE, connection.getClientChannel());
+        }
+	}
+
+	/**
      * Close client and server channels
      * @param channel
      */
@@ -133,7 +178,7 @@ public class ClientProxyHandler implements Handler {
 	    	proxy.getClientChannel().close();
 	    	XMPPProxyLogger.getInstance().debug("Client[" + clientLocalAddress + "] to XMPP Proxy[" + clientRemoteAddress + "] socket closed");
 			XMPPProxyLogger.getInstance().info("Client " + jid + " has disconnected");
-	    	if(proxy.getServerChannel()!=null){
+	    	if(proxy.getServerChannel()!=null && proxy.getServerChannel().isOpen()){
 	    		String serverLocalAddress = proxy.getServerChannel().getLocalAddress().toString();
 				String serverRemoteAddress = proxy.getServerChannel().getRemoteAddress().toString();
 	    		proxyToClientChannelMap.remove(proxy.getServerChannel());
@@ -170,12 +215,10 @@ public class ClientProxyHandler implements Handler {
      * @param clientChannel
      * @throws IOException
      */
-    private void sendToServer(String s, SocketChannel clientChannel) {
-    	ProxyConnection pc = clientToProxyChannelMap.get(clientChannel);
+    private void sendToServer(String s, ProxyConnection pc) {
     	try {
 	    	if (pc.getServerChannel() == null) {
-	    		// aca multiplexas en base al jid
-	    		InetSocketAddress hostAddress = new InetSocketAddress(ProxyConfiguration.getInstance().getProperty("xmpp_server_host"), 5222);
+	    		InetSocketAddress hostAddress = getClientSpecificXmppServerAddress(pc);
 	            SocketChannel serverChannel = SocketChannel.open(hostAddress);
 	            serverChannel.configureBlocking(false);
 	            serverChannel.register(this.selector, SelectionKey.OP_READ);
@@ -193,8 +236,8 @@ public class ClientProxyHandler implements Handler {
 	    }
 	    catch(UnresolvedAddressException e) {
 	      System.out.println("UnresolvedAddressException");
-	      String error = Stanza.errorMessage("not-allowed", "cancel", "405", pc.getJid(), "Servidor no encontrado");
-	      writeInChannel(error, pc.getClientChannel());
+//	      probar algo como esto -> String error = "<?xml version='1.0'?><stream:stream id='' xmlns:stream='http://etherx.jabber.org/streams' version='1.0' xmlns='jabber:client'><stream:error><host-unknown xmlns='urn:ietf:params:xml:ns:xmpp-streams'/><text xmlns='urn:ietf:params:xml:ns:xmpp-streams'>This server does not serve otroserver</text></stream:error></stream:stream>";
+//	      writeInChannel(error, pc.getClientChannel());
 	    }
 	    catch(UnsupportedAddressTypeException e) {
 	    	System.out.println("UnsupportedAddressTypeException");
@@ -207,7 +250,13 @@ public class ClientProxyHandler implements Handler {
 	    }
     }
     
-    /**
+    private InetSocketAddress getClientSpecificXmppServerAddress(
+			ProxyConnection pc) {
+    	InetSocketAddress serverTo = Multiplexing.getInstance().getUserServer(pc.getUsername());
+		return serverTo;
+	}
+
+	/**
      * Write data to a specific channel
      */
     public void writeInChannel(String s, SocketChannel channel) {

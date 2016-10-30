@@ -5,6 +5,9 @@ import ar.edu.itba.utils.Utils;
 
 public class Stanza {
 	
+	public static final String FAKE_SERVER_INITIAL_PLAIN_AUTH_RESPONSE = "<?xml version='1.0'?><stream:stream xmlns:stream='http://etherx.jabber.org/streams' version='1.0' from='' xmlns='jabber:client'><stream:features><mechanisms xmlns='urn:ietf:params:xml:ns:xmpp-sasl'><mechanism>PLAIN</mechanism></mechanisms><auth xmlns='http://jabber.org/features/iq-auth'/></stream:features>";
+	public static final String FAKE_PLAIN_AUTH_SUCCESS = "<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'></success>";
+	public static final String CLIENT_AUTH_PATTERN = ">(.*)<\\/auth>";
 	public static String MESSAGE_TAG = "<message";
 	public static String BODY_TAG = "<body";
 	public static String JID_TAG_PATTERN = "<jid>(.*)<\\/jid>";
@@ -40,12 +43,16 @@ public class Stanza {
 	public static String errorMessage(String condition, String type, String code,
 			String jid, String message) {
 		String admin = ProxyConfiguration.getInstance().getProperty("admin");;
-		return "<message type='error'>" +
+		return "<message to='"+jid+"' type='error'>" +
 				"<body>"+ message +"</body>" +
 				"<error code='"+ code +"' type='"+ type +"'>" +
 					"<"+condition+" xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>" +
 				"</error>" + 
 			"</message>";
 	}
-
+	
+	public static String initialStanza() {
+		// check optimization only to fetch config after update of config;
+		return "<?xml version='1.0' ?><stream:stream to='" + ProxyConfiguration.getInstance().getProperty("xmpp_server_hostname") + "' xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0'>";
+	}
 }

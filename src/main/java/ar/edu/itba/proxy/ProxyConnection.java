@@ -7,6 +7,8 @@ public class ProxyConnection {
 	private SocketChannel clientChannel;
 	private SocketChannel serverChannel;
 	private String jid;
+	private String username;
+	private boolean tryingToRegister;
 	
 	public ProxyConnection(SocketChannel clientChannel) {
 		this.clientChannel = clientChannel; 
@@ -34,5 +36,25 @@ public class ProxyConnection {
 	
 	public void setJid(String jid) {
 		this.jid = jid;
+	}
+
+	public String getUsername() {
+		return username;
+	}
+
+	public void setUsername(String username) {
+		this.username = username;
+	}
+
+	public boolean isUserRecognized() {
+		return this.username != null;
+	}
+
+	public boolean isTryingToRegister() {
+		return tryingToRegister;
+	}
+
+	public void setTryingToRegister(boolean tryingToRegister) {
+		this.tryingToRegister = tryingToRegister;
 	}
 }
