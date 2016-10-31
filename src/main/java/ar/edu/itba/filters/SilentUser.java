@@ -3,7 +3,7 @@ package ar.edu.itba.filters;
 import java.util.HashSet;
 import java.util.Set;
 
-import ar.edu.itba.admin.ProxyConfiguration;
+import ar.edu.itba.config.ProxyConfiguration;
 import ar.edu.itba.stanza.Stanza;
 
 public class SilentUser {
@@ -52,5 +52,13 @@ public class SilentUser {
 	 */
 	public String getErrorMessage(String fromJid) {
 		return Stanza.errorMessage("not-allowed", "cancel", "405",fromJid, "Estas silenciado vieja");
+	}
+	
+	public void addUser(String user) {
+		users.add(user);
+	}
+	
+	public void deleteUser(String user) {
+		users.remove(user);
 	}
 }

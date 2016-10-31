@@ -1,4 +1,4 @@
-package ar.edu.itba.protos;
+package ar.edu.itba.proxy;
 
 import java.nio.channels.SocketChannel;
 

@@ -1,4 +1,4 @@
-package ar.edu.itba.protos;
+package ar.edu.itba.proxy;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -15,7 +15,7 @@ import java.nio.channels.UnresolvedAddressException;
 import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.concurrent.ConcurrentHashMap;
 
-import ar.edu.itba.admin.ProxyConfiguration;
+import ar.edu.itba.config.ProxyConfiguration;
 import ar.edu.itba.filters.SilentUser;
 import ar.edu.itba.filters.Transformations;
 import ar.edu.itba.logger.XMPPProxyLogger;
@@ -59,7 +59,7 @@ public class ClientProxyHandler implements Handler {
      * @param key
      * @throws IOException
      */
-    public SocketChannel accept(SelectionKey key) throws IOException {
+    public void accept(SelectionKey key) throws IOException {
         ServerSocketChannel keyChannel = (ServerSocketChannel) key.channel();
         SocketChannel newChannel = keyChannel.accept();
         newChannel.configureBlocking(false);
@@ -69,7 +69,6 @@ public class ClientProxyHandler implements Handler {
         XMPPProxyLogger.getInstance().debug("Accepted new client connection from " + localAddr + " to " + remoteAddr);
         newChannel.register(this.selector, SelectionKey.OP_READ);
         clientToProxyChannelMap.put(newChannel, new ProxyConnection(newChannel));
-        return newChannel;
     }
     
     /**

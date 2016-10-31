@@ -1,4 +1,4 @@
-package ar.edu.itba.protos;
+package ar.edu.itba.proxy;
 
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import ar.edu.itba.admin.ProxyConfiguration;
+import ar.edu.itba.config.ProxyConfiguration;
 
 public class Dispatcher {
 	

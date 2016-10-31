@@ -1,6 +1,6 @@
 package ar.edu.itba.stanza;
 
-import ar.edu.itba.admin.ProxyConfiguration;
+import ar.edu.itba.config.ProxyConfiguration;
 import ar.edu.itba.utils.Utils;
 
 public class Stanza {

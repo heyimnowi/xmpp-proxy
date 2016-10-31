@@ -1,4 +1,4 @@
-package ar.edu.itba.admin;
+package ar.edu.itba.config;
 
 import java.io.FileInputStream;
 import java.util.Properties;
@@ -41,7 +41,6 @@ public class ProxyConfiguration {
 		properties.setProperty(property, value);
 	}
 
-	
 	public boolean hasProperty(String property) {
 		return properties.containsKey(property);
 	}
