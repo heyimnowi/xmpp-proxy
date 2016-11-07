@@ -45,7 +45,6 @@ public class AdminProxyHandler implements Handler {
 	private ServerSocketChannel adminChannel;
 	
     public AdminProxyHandler(String address, int port, Selector selector) throws IOException {
-    	System.out.println("Hola admin");
 		config = ProxyConfiguration.getInstance();
     	this.selector = selector;
     	listenAddress = new InetSocketAddress(address, port);

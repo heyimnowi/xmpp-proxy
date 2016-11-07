@@ -7,14 +7,13 @@ import java.util.Map;
 import ar.edu.itba.config.ProxyConfiguration;
 import ar.edu.itba.logger.XMPPProxyLogger;
 
-public class Multiplexing implements ProxyFilter{
+public class Multiplexing extends ProxyFilter{
 	private InetSocketAddress defaultServer;
 	private Map<String, InetSocketAddress> usernameToServerMap = new HashMap<String, InetSocketAddress>();;
 	private static final int XMPP_DEFAULT_PORT = 5222;
 	private static final String SPLIT_USERS_DELIMITER = ",";
 	private static final String XMPP_DOMAIN_DELIMITER = "@";
 	private static final String XMPP_PORT_DELIMITER = ":";
-	public boolean enabled;
 
 	private static Multiplexing instance = null;
 
@@ -33,7 +32,8 @@ public class Multiplexing implements ProxyFilter{
 
 	/* From admin changes */
 	public void update() {
-		String multiplexedUsers = ProxyConfiguration.getInstance().getProperty("multiplexing").replaceAll(" ", "");
+		this.enabled = Boolean.parseBoolean(ProxyConfiguration.getInstance().getProperty("multiplexing_enabled"));
+		String multiplexedUsers = ProxyConfiguration.getInstance().getProperty("filter_multiplexing").replaceAll(" ", "");
 		if (multiplexedUsers != null && !multiplexedUsers.equals("")) {
 			for (String s : multiplexedUsers.split(SPLIT_USERS_DELIMITER)) {
 				String[] address = s.split(XMPP_DOMAIN_DELIMITER);
@@ -48,14 +48,13 @@ public class Multiplexing implements ProxyFilter{
 
 	public InetSocketAddress getUserServer(String user) {
 		InetSocketAddress serverForUser = defaultServer;
+		if (!enabled) {
+			return defaultServer;
+		}
 		if (usernameToServerMap.containsKey(user))
 			serverForUser = usernameToServerMap.get(user);
 		if (!serverForUser.equals(defaultServer))
 			XMPPProxyLogger.getInstance().info("Multiplexing " + user + " towards " + serverForUser);
 		return serverForUser;
-	}
-	
-	public boolean isEnabled() {
-		return this.enabled;
 	}
 }

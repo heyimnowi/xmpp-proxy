@@ -1,6 +1,9 @@
 package ar.edu.itba.filters;
 
-public interface ProxyFilter {
-	public void update();
-	public boolean isEnabled();
+public abstract class ProxyFilter {
+	public boolean enabled;
+	
+	public boolean isEnabled() {
+		return this.enabled;
+	}
 }

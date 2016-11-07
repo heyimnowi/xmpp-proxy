@@ -31,7 +31,8 @@ public enum StatusResponse {
 		this.extendedMessage = message;
 	}
 	public String toString() {
-		message = extendedMessage == null ? message : extendedMessage;
-		return code + " - " + message + "\n";
+		String text = extendedMessage == null ? message : extendedMessage;
+		extendedMessage = null;
+		return code + " - " + text + "\n";
 	}
 }

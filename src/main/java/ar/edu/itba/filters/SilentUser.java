@@ -6,11 +6,10 @@ import java.util.Set;
 import ar.edu.itba.config.ProxyConfiguration;
 import ar.edu.itba.stanza.Stanza;
 
-public class SilentUser implements ProxyFilter{
+public class SilentUser extends ProxyFilter{
 	
 	private static SilentUser instance;
 	private Set<String> users = null;
-	private boolean enabled;
 	
 	private SilentUser() {
 		users = new HashSet<String>();
@@ -26,7 +25,7 @@ public class SilentUser implements ProxyFilter{
 	
 	public void update() {
 		users.clear();
-		String stringUsers = ProxyConfiguration.getInstance().getProperty("silenceuser");
+		String stringUsers = ProxyConfiguration.getInstance().getProperty("filter_silenceuser");
 		for (String user : stringUsers.split(",")) {
 			users.add(user);
 		}
@@ -40,7 +39,7 @@ public class SilentUser implements ProxyFilter{
 	 * @return
 	 */
 	public boolean filterMessage(String message, String fromJid) {
-		return Stanza.isMessage(message) && Stanza.isChatMessage(message) && isSilent(fromJid);
+		return enabled && Stanza.isMessage(message) && Stanza.isChatMessage(message) && isSilent(fromJid);
 	}
 	
 	/**
@@ -67,9 +66,5 @@ public class SilentUser implements ProxyFilter{
 	
 	public void deleteUser(String user) {
 		users.remove(user);
-	}
-	
-	public boolean isEnabled() {
-		return this.enabled;
 	}
 }

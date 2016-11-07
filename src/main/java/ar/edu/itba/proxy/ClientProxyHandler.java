@@ -37,7 +37,6 @@ public class ClientProxyHandler implements Handler {
     private ServerSocketChannel channel;
 
     public ClientProxyHandler(String address, int port, Selector selector) throws IOException {
-    	System.out.println("Hola vieja");
     	this.selector = selector;
     	listenAddress = new InetSocketAddress(address, port);
         channel = ServerSocketChannel.open();

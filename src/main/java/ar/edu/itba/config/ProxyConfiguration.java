@@ -21,7 +21,6 @@ public class ProxyConfiguration {
 	private File file;
 
 	private static ProxyConfiguration instance;
-	private static List<Class<? extends ProxyFilter>> filters;
 
 	public static ProxyConfiguration getInstance() {
 		if (instance == null)
@@ -36,10 +35,6 @@ public class ProxyConfiguration {
 			this.file = new File(current + "/src/main/resources/config.properties");
 			FileInputStream fis = new FileInputStream(file);
 			properties.load(fis);
-			filters = new ArrayList<ProxyFilter>();
-			filters.add(SilentUser.class);
-			filters.add(Multiplexing.class);
-			filters.add(Transformations.class);
 
 		} catch (Exception e) {
 			XMPPProxyLogger.getInstance().error("Cannot open proxy configuration file");
@@ -53,18 +48,26 @@ public class ProxyConfiguration {
 	}
 
 	public void setProperty(String property, String value) throws IOException {
-		Set<String> propertyValues = propertyToSetOfValues(property);
-		propertyValues.add(value);
-		properties.setProperty(property, propertiesFromSet(propertyValues));
+		String finalValue = "";
+		if (property.startsWith("filter_")) {
+			Set<String> propertyValues = propertyToSetOfValues(property);
+			propertyValues.add(value);
+			finalValue = propertiesFromSet(propertyValues);
+		} else {
+			finalValue = value;
+		}
+		properties.setProperty(property, finalValue);
 		flushPropertiesToFile();
 		
 	}
 	
 	public void unsetProperty(String property, String value) throws IOException {
-		Set<String> propertyValues = propertyToSetOfValues(property);
-		propertyValues.remove(value);
-		properties.setProperty(property, propertiesFromSet(propertyValues));
-		flushPropertiesToFile();
+		if (property.startsWith("filter_")) {
+			Set<String> propertyValues = propertyToSetOfValues(property);
+			propertyValues.remove(value);
+			properties.setProperty(property, propertiesFromSet(propertyValues));
+			flushPropertiesToFile();
+		}
 	}
 	
 	private void flushPropertiesToFile() throws IOException {
@@ -74,9 +77,9 @@ public class ProxyConfiguration {
 	}
 	
 	private void updateFilters() {
-		for (ProxyFilter filter : filters) {
-			filter.update();
-		}
+		SilentUser.getInstance().update();
+		Multiplexing.getInstance().update();
+		Transformations.getInstance().update();
 	}
 
 	private Set<String> propertyToSetOfValues(String property) {

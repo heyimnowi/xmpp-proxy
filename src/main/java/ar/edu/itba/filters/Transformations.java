@@ -9,10 +9,9 @@ import ar.edu.itba.config.ProxyConfiguration;
 import ar.edu.itba.stanza.Stanza;
 import ar.edu.itba.utils.Utils;
 
-public class Transformations implements ProxyFilter{
+public class Transformations extends ProxyFilter{
 	
 	private static Transformations instance;
-	private boolean enabled;
 	
 	private static Map<Character,String> swaps;
 	private static String LEFT_OF_BODY_PATTERN = "(.*)<body>";
@@ -33,13 +32,14 @@ public class Transformations implements ProxyFilter{
 		swaps.put('e', "3");
 		swaps.put('i', "1");
 		swaps.put('o', "0");
-		swaps.put('c', "&lt;");
+		swaps.put('c', "<");
 		// Uppercase
 		swaps.put('A', "4");
 		swaps.put('E', "3");
 		swaps.put('I', "1");
 		swaps.put('O', "0");
-		swaps.put('C', "&lt;");
+		swaps.put('C', "<");
+		update();
 	}
 	
 	/**
@@ -48,7 +48,7 @@ public class Transformations implements ProxyFilter{
 	 * @return
 	 */
 	public String applyTransformations(String s) {
-		if (!Stanza.isMessage(s)) {
+		if (!enabled || !Stanza.isMessage(s)) {
 			return s;
 		}
 		if (!Utils.regexMatch(s, BODY_PATTERN))
@@ -84,9 +84,5 @@ public class Transformations implements ProxyFilter{
 
 	public void update() {
 		this.enabled = Boolean.parseBoolean(ProxyConfiguration.getInstance().getProperty("transformations_enabled"));
-	}
-	
-	public boolean isEnabled() {
-		return this.enabled;
 	}
 }
