@@ -12,10 +12,15 @@ import java.nio.channels.SocketChannel;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 
+import com.google.common.base.CaseFormat;
+
+import ar.edu.itba.admin.AdminCommand;
 import ar.edu.itba.admin.StatusResponse;
 import ar.edu.itba.config.ProxyConfiguration;
 import ar.edu.itba.filters.SilentUser;
 import ar.edu.itba.logger.XMPPProxyLogger;
+import ar.edu.itba.metrics.MetricsCollector;
+import ar.edu.itba.proxy.AdminConnection.AdminState;
 import ar.edu.itba.utils.Utils;
 
 public class AdminProxyHandler implements Handler {
@@ -25,15 +30,17 @@ public class AdminProxyHandler implements Handler {
 	private Selector selector;
 	private ProxyConfiguration config;
 	private final static int BUFFER_SIZE = 1024*100;
-	private static String SUCCESSFULL_TYPE = "successfull";
-	private static String ERROR_TYPE = "error";
-	private static String ADMIN_INITIAL_MESSAGE = "</hello>\n";
-	private static String ADMIN_FINAL_MESSAGE = "</bye>\n";
-	private static String SILENT_USER_TAG = "^<silent-user>(.*)<\\/silent-user>\n$";
-	private static String UNSILENT_USER_TAG = "^<silent-user>(.*)<\\/silent-user>\n$";
-	private static String AUTH_TAG = "^<auth><user>(.*)<\\/user><password>(.*)<\\/password><\\/auth>\n$";
+	private static final String METRICS = "metrics";
 	private static String adminUser;
 	private static String adminPassword;
+	private static String COMMAND_PATTERN = "[a-zA-Z]+";
+	private static String KEY_PATTERN = "[a-zA-z\\-]+";
+	private static String VALUE_PATTERN = ".+";
+	private static String keyValRegex = "^(" + COMMAND_PATTERN + ")\\s+(" + KEY_PATTERN + ")\\s*=\\s*(" + VALUE_PATTERN + ")\n$";
+	private static String onlyKeyRegex = "^(GET ?|LOGOUT$)\\s*("+ KEY_PATTERN +")?\n$";
+	private static int COMMAND_GROUP = 1;
+	private static int KEY_GROUP = 2;
+	private static int VALUE_GROUP = 3;
     private ConcurrentHashMap<SocketChannel, AdminConnection> connections = new ConcurrentHashMap<SocketChannel, AdminConnection>();
 	private ServerSocketChannel adminChannel;
 	
@@ -50,6 +57,10 @@ public class AdminProxyHandler implements Handler {
 		adminUser = config.getProperty("admin_user");
 		adminPassword = config.getProperty("admin_password");
         logger.info("Admin proxy started");
+    }
+    
+    public ServerSocketChannel getChannel() {
+    	return adminChannel;
     }
     
 	public void accept(SelectionKey key) throws IOException {
@@ -82,100 +93,105 @@ public class AdminProxyHandler implements Handler {
 		System.arraycopy(buffer.array(), 0, data, 0, numRead); 
 		String stringRead = new String(data);
 		System.out.println("Got admin: " + stringRead);
-		String response;
 		
 		AdminConnection connection = connections.get(channel);
-		if (isHello(stringRead) && !connection.isHello()) {
-			connection.setHello(true);
-			writeInChannel(helloSuccess(), channel);
-		} else {
-			if (!connection.isLogged()) {
-				if (isAuth(stringRead)) {
-					response = authenticate(stringRead);
-					if (response.equals(signInSuccess())) {
-						connection.setLogged(true);
-					}
-					writeInChannel(response, channel);
-				}
-			} else {
-				if (isSilent(stringRead)) {
-					response = silentUser(stringRead);
-					writeInChannel(response, channel);
+		String response = handleAdminCommand(connection, stringRead);
+		writeInChannel(response, channel);
+	}
+
+	private String handleAdminCommand(AdminConnection connection,
+			String stringRead) {
+		StatusResponse statusResponse = StatusResponse.INTERNAL_ERROR;
+		try {
+			ProxyConfiguration conf = ProxyConfiguration.getInstance();
+			switch (connection.getState()) {
+			case LOGGED_IN:
+				if (Utils.regexMatch(stringRead, keyValRegex)) {
+					Matcher commandGroup = Utils.regexRead(stringRead, keyValRegex);
+					String command = commandGroup.group(COMMAND_GROUP);
+					String key = commandGroup.group(KEY_GROUP);
+					String value = commandGroup.group(VALUE_GROUP);
 					
-				} else if (isUnsilent(stringRead)) {
-					response = unsilentUser(stringRead);
-					writeInChannel(response, channel);
-				}
-				else if (isBye(stringRead)) {
-					//writeInChannel(response, channel);
+					switch (AdminCommand.valueOf(command.toUpperCase())) {
+					case SET:
+						conf.setProperty(key, value);
+						statusResponse = StatusResponse.COMMAND_OK;
+						break;
+					case UNSET:
+						conf.unsetProperty(key, value);
+						statusResponse = StatusResponse.COMMAND_OK;
+						break;
+					default:
+						statusResponse = StatusResponse.COMMAND_UNKNOWN;
+						break;
+					}
+				} else if (Utils.regexMatch(stringRead, onlyKeyRegex)) {
+					Matcher commandGroup = Utils.regexRead(stringRead, onlyKeyRegex);
+					
+					String command = commandGroup.group(COMMAND_GROUP);
+					String key = commandGroup.group(KEY_GROUP);
+					switch (AdminCommand.valueOf(command.toUpperCase().trim())) {
+					case GET:
+						if (key == null) {
+							statusResponse = StatusResponse.COMMAND_OK;
+							statusResponse.setExtendedMessage(conf.getAllProperties());
+						} else if (key.equals(METRICS)) {
+							// TODO imprimir metricas
+						} else {
+							String property = conf.getProperty(key);
+							if (property.isEmpty()) {
+								statusResponse = StatusResponse.NOT_FOUND;
+							} else {
+								statusResponse = StatusResponse.COMMAND_OK;
+								statusResponse.setExtendedMessage(property);
+							}
+						}
+						break;
+					case LOGOUT:
+						connection.setState(AdminState.NO_STATUS);
+						connection.closeConnection();
+						break;
+					default:
+						break;
+					}
 				} else {
-					response = badRequest();
-					writeInChannel(response, channel);
+					statusResponse = StatusResponse.COMMAND_UNKNOWN;
 				}
+				break;
+			case NO_STATUS:
+				if (Utils.regexMatch(stringRead, keyValRegex)) {
+					Matcher commandGroup = Utils.regexRead(stringRead, keyValRegex);
+					String command = commandGroup.group(COMMAND_GROUP);
+					switch (AdminCommand.valueOf(command.toUpperCase())) {
+					case LOGIN:
+						String user = commandGroup.group(KEY_GROUP);
+						String password = commandGroup.group(VALUE_GROUP);
+						if (adminUser.equals(user) && adminPassword.equals(password)) {
+							connection.setState(AdminState.LOGGED_IN);
+							statusResponse = StatusResponse.LOGIN_OK;
+						} else {
+							statusResponse = StatusResponse.LOGIN_FAILED;
+						}
+						break;
+					default:
+						statusResponse = StatusResponse.COMMAND_FORBIDDEN;
+						break;
+					}
+				} else {
+					statusResponse = StatusResponse.COMMAND_FORBIDDEN;
+				}
+				
 			}
+			return statusResponse.toString();
+		} catch (Exception e) {
+			statusResponse = StatusResponse.INTERNAL_ERROR;
+			return statusResponse.toString();
 		}
 	}
 
-	private String unsilentUser(String stringRead) {
-		String user = Utils.regexRead(stringRead, SILENT_USER_TAG).group(1);
-		String silenceProperty = config.getProperty("silenceuser");
-		if (silenceProperty.equals("")) {
-			config.setProperty("silenceuser", user);
-		} else if (!silenceProperty.contains(user)) {
-			config.setProperty("silenceuser", silenceProperty + "," + user);
-		}
-		SilentUser.getInstance().deleteUser(user);
-		return unsilenceUserSuccess(user);
-	}
-
-	private String unsilenceUserSuccess(String user) {
-		return StatusResponse.getStatus(SUCCESSFULL_TYPE, "200", "You have unsilent " + user);
-	}
-
-	private String silentUser(String stringRead) {
-		String user = Utils.regexRead(stringRead, SILENT_USER_TAG).group(1);
-		String silenceProperty = config.getProperty("silenceuser");
-		if (silenceProperty.equals("")) {
-			config.setProperty("silenceuser", user);
-		} else if (!silenceProperty.contains(user)) {
-			config.setProperty("silenceuser", silenceProperty + "," + user);
-		}
-		SilentUser.getInstance().addUser(user);
-		return silenceUserSuccess(user);
-	}
-
-	private boolean isBye(String stringRead) {
-		return Utils.regexMatch(stringRead, ADMIN_FINAL_MESSAGE);
-	}
-
-	private boolean isUnsilent(String stringRead) {
-		return Utils.regexMatch(stringRead, UNSILENT_USER_TAG);
-	}
-
-	private boolean isSilent(String stringRead) {
-		return Utils.regexMatch(stringRead, SILENT_USER_TAG);
-	}
-
-	private boolean isAuth(String stringRead) {
-		return Utils.regexMatch(stringRead, AUTH_TAG);
-	}
-
-	private String authenticate(String stringRead) {
-		Matcher matcher = Utils.regexRead(stringRead, AUTH_TAG);
-		String user = matcher.group(1);
-		String password = matcher.group(2);
-		if (user.equals(adminUser) && password.equals(adminPassword)) {
-			return signInSuccess();
-		}
-		return signInFail();
-	}
-	
-	public boolean isHello(String stringRead) {
-		return stringRead.equals(ADMIN_INITIAL_MESSAGE);
-	}
-		
-	public void writeInChannel(String s, SocketChannel channel) throws IOException {
-    	ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
+	public void writeInChannel(String s, SocketChannel channel)
+			throws IOException {
+		ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
         try {
 			channel.write(buffer);
 		} catch (IOException e) {
@@ -183,33 +199,5 @@ public class AdminProxyHandler implements Handler {
 			
 		}
         buffer.clear();
-	}
-	
-	public static String helloSuccess() {
-		return StatusResponse.getStatus(SUCCESSFULL_TYPE, "200", "Welcome to the nowixmppserver admin. Who are you?");
-	}
-	
-	public String signInSuccess() {
-		return StatusResponse.getStatus(SUCCESSFULL_TYPE, "200", "You’re the boss now! Start setting your configurations dude :)");
-	}
-	
-	public String badRequest() {
-		return StatusResponse.getStatus(ERROR_TYPE, "400", "Bad request bro");
-	}
-	
-	public String signInFail() {
-		return StatusResponse.getStatus(ERROR_TYPE, "401", "Mhhh please check your credentials");
-	}
-	
-	public String silenceUserSuccess(String user) {
-		return StatusResponse.getStatus(SUCCESSFULL_TYPE, "200", "You have silent " + user + ". You’re a bitch");
-	}
-	
-	public static String signOutSuccess() {
-		return StatusResponse.getStatus(SUCCESSFULL_TYPE, "200", "Hasta la vista, baby");
-	}
-
-	public ServerSocketChannel getChannel() {
-		return adminChannel;
 	}
 }

@@ -5,12 +5,14 @@ import java.util.Map;
 
 import org.apache.commons.lang3.StringEscapeUtils;
 
+import ar.edu.itba.config.ProxyConfiguration;
 import ar.edu.itba.stanza.Stanza;
 import ar.edu.itba.utils.Utils;
 
-public class Transformations {
+public class Transformations implements ProxyFilter{
 	
 	private static Transformations instance;
+	private boolean enabled;
 	
 	private static Map<Character,String> swaps;
 	private static String LEFT_OF_BODY_PATTERN = "(.*)<body>";
@@ -78,5 +80,13 @@ public class Transformations {
 			}
 		}
 		return buffer.toString();
+	}
+
+	public void update() {
+		this.enabled = Boolean.parseBoolean(ProxyConfiguration.getInstance().getProperty("transformations_enabled"));
+	}
+	
+	public boolean isEnabled() {
+		return this.enabled;
 	}
 }

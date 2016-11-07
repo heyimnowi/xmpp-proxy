@@ -1,32 +1,20 @@
 package ar.edu.itba.proxy;
 
+import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
 public class AdminConnection {
 	
-	private boolean logged;
-	private boolean hello;
 	private SocketChannel channel;
+	private AdminState state;
+	public static enum AdminState {
+		LOGGED_IN,
+		NO_STATUS
+	}
 	
 	public AdminConnection(SocketChannel channel) {
-		this.logged = false;
-		this.hello = false;
-	}
-
-	public boolean isLogged() {
-		return logged;
-	}
-
-	public void setLogged(boolean logged) {
-		this.logged = logged;
-	}
-
-	public boolean isHello() {
-		return hello;
-	}
-
-	public void setHello(boolean hello) {
-		this.hello = hello;
+		this.setState(AdminState.NO_STATUS);
+		this.channel = channel;
 	}
 
 	public SocketChannel getChannel() {
@@ -35,6 +23,20 @@ public class AdminConnection {
 
 	public void setChannel(SocketChannel channel) {
 		this.channel = channel;
+	}
+
+	public AdminState getState() {
+		return state;
+	}
+
+	public void setState(AdminState state) {
+		this.state = state;
+	}
+
+	public void closeConnection() throws IOException {
+		if (channel != null && channel.isOpen()) {
+			channel.close();
+		}
 	}
 
 }
