@@ -12,22 +12,20 @@ public class MetricsCollector {
 	private long totalBytesSent;
 	private long totalBytesReceived;
 	private long totalAccesses;
-	private long totalMessages;
 	
 	private MetricsCollector(){
 		this.metrics = new HashMap<String,UserMetrics>();
-		this.totalMessages = 0;
 		this.totalAccesses = 0;
 		this.totalBytesReceived = 0;
 		this.totalBytesSent = 0;
 	}
 	
-	public long getTotalMessages() {
-		return totalMessages;
+	public long getTotalAccesses() {
+		return totalAccesses;
 	}
 
 	public void setTotalMessages(long totalMessages) {
-		this.totalMessages = totalMessages;
+		this.totalAccesses = totalMessages;
 	}
 
 	public static MetricsCollector getInstance(){
@@ -55,12 +53,10 @@ public class MetricsCollector {
 			}
 		}
 		if(sent){
-			//XMPPProxyLogger.getInstance().info("Message sent by " + jid + " - size: " + length);
 			totalBytesSent += length;
 			if(um != null)
 				um.addBytesSent(length);
 		}else{
-			//XMPPProxyLogger.getInstance().info("Message sent by " + jid + " - size: " + length);
 			totalBytesReceived += length;
 			if( um != null)
 				um.addBytesReceived(length);
@@ -82,7 +78,10 @@ public class MetricsCollector {
 		return totalBytesReceived;
 	}
 
-	public long getTotalAccesses() {
-		return totalAccesses;
+	
+	public String toString () {
+		return 	"Bytes received: " + totalBytesReceived + ", " +
+				"Bytes sent: " + totalBytesSent + ", " +
+				"Total Accesses: " + totalAccesses;
 	}
 }

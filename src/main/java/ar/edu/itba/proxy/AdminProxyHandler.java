@@ -15,6 +15,7 @@ import ar.edu.itba.admin.AdminCommand;
 import ar.edu.itba.admin.StatusResponse;
 import ar.edu.itba.config.ProxyConfiguration;
 import ar.edu.itba.logger.XMPPProxyLogger;
+import ar.edu.itba.metrics.MetricsCollector;
 import ar.edu.itba.proxy.AdminConnection.AdminState;
 import ar.edu.itba.utils.Utils;
 
@@ -137,8 +138,7 @@ public class AdminProxyHandler implements Handler {
 							logger.info(logMessage + " " + StatusResponse.COMMAND_OK.getCode() + " - all configurations");
 						} else if (key.equals(METRICS)) {
 							statusResponse = StatusResponse.COMMAND_OK;
-							// TODO imprimir metricas
-							statusResponse.setExtendedMessage(conf.getAllProperties());
+							statusResponse.setExtendedMessage(MetricsCollector.getInstance().toString());
 							logger.info(logMessage + " " + StatusResponse.COMMAND_OK.getCode() + " - metrics");
 						} else {
 							String property = conf.getProperty(key);

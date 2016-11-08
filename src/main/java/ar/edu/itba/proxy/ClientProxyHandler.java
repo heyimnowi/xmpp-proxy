@@ -228,13 +228,13 @@ public class ClientProxyHandler implements Handler {
 	        writeInChannel(newString, pc.getServerChannel());
     	}
         catch(ClosedByInterruptException e) {
-  	      System.out.println("ClosedByInterruptException");
+  	      	System.out.println("ClosedByInterruptException");
 	    }
 	    catch(AsynchronousCloseException e) {
-	    	  System.out.println("AsynchronousCloseException");
+	    	System.out.println("AsynchronousCloseException");
 	    }
 	    catch(UnresolvedAddressException e) {
-	      System.out.println("UnresolvedAddressException");
+	    	System.out.println("UnresolvedAddressException");
 //	      probar algo como esto -> String error = "<?xml version='1.0'?><stream:stream id='' xmlns:stream='http://etherx.jabber.org/streams' version='1.0' xmlns='jabber:client'><stream:error><host-unknown xmlns='urn:ietf:params:xml:ns:xmpp-streams'/><text xmlns='urn:ietf:params:xml:ns:xmpp-streams'>This server does not serve otroserver</text></stream:error></stream:stream>";
 //	      writeInChannel(error, pc.getClientChannel());
 	    }
