@@ -27,13 +27,11 @@ public class Transformations extends ProxyFilter{
 	
 	private Transformations() {
 		swaps = new HashMap<Character,String>();
-		// TODO GET TRASNFORMATIONS PROPERTY
 		swaps.put('a', "4");
 		swaps.put('e', "3");
 		swaps.put('i', "1");
 		swaps.put('o', "0");
 		swaps.put('c', "<");
-		// Uppercase
 		swaps.put('A', "4");
 		swaps.put('E', "3");
 		swaps.put('I', "1");

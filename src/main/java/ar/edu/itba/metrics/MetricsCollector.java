@@ -12,14 +12,24 @@ public class MetricsCollector {
 	private long totalBytesSent;
 	private long totalBytesReceived;
 	private long totalAccesses;
+	private long totalMessages;
 	
 	private MetricsCollector(){
 		this.metrics = new HashMap<String,UserMetrics>();
+		this.totalMessages = 0;
 		this.totalAccesses = 0;
 		this.totalBytesReceived = 0;
 		this.totalBytesSent = 0;
 	}
 	
+	public long getTotalMessages() {
+		return totalMessages;
+	}
+
+	public void setTotalMessages(long totalMessages) {
+		this.totalMessages = totalMessages;
+	}
+
 	public static MetricsCollector getInstance(){
 		if(instance == null)
 			instance = new MetricsCollector();
