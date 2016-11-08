@@ -9,7 +9,8 @@ import ar.edu.itba.logger.XMPPProxyLogger;
 
 public class Multiplexing extends ProxyFilter{
 	private InetSocketAddress defaultServer;
-	private Map<String, InetSocketAddress> usernameToServerMap = new HashMap<String, InetSocketAddress>();;
+	private Map<String, InetSocketAddress> usernameToServerMap = new HashMap<String, InetSocketAddress>();
+	private XMPPProxyLogger logger;;
 	private static final int XMPP_DEFAULT_PORT = 5222;
 	private static final String SPLIT_USERS_DELIMITER = ",";
 	private static final String XMPP_DOMAIN_DELIMITER = "@";
@@ -27,6 +28,7 @@ public class Multiplexing extends ProxyFilter{
 	private Multiplexing() {
 		ProxyConfiguration conf = ProxyConfiguration.getInstance();
 		defaultServer = new InetSocketAddress(conf.getProperty("xmpp_server_host"), Integer.parseInt(conf.getProperty("xmpp_server_port")));
+		this.logger = XMPPProxyLogger.getInstance();
 		update();
 	}
 
@@ -54,7 +56,7 @@ public class Multiplexing extends ProxyFilter{
 		if (usernameToServerMap.containsKey(user))
 			serverForUser = usernameToServerMap.get(user);
 		if (!serverForUser.equals(defaultServer))
-			XMPPProxyLogger.getInstance().info("Multiplexing " + user + " towards " + serverForUser);
+			logger.info("Multiplexing " + user + " towards " + serverForUser);
 		return serverForUser;
 	}
 }
