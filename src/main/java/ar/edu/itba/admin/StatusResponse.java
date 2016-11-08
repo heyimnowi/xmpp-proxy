@@ -13,6 +13,7 @@ public enum StatusResponse {
 	private int code;
 	private String message;
 	private String extendedMessage;
+
 	
 	private StatusResponse(int code, String message) {
 		this.code = code;

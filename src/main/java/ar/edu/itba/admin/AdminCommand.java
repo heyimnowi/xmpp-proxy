@@ -1,5 +1,7 @@
 package ar.edu.itba.admin;
 
+import org.apache.commons.lang3.StringUtils;
+
 public enum AdminCommand {
 	
 	LOGIN("login"),
@@ -14,8 +16,13 @@ public enum AdminCommand {
 		this.message = message;
 	}
 
+	public String getLogtMessage() {
+		String logMessage = StringUtils.rightPad(message, 6, ' ');
+		return logMessage.toUpperCase();
+	}
+
 	public String getMessage() {
-		return message;
+		return message.toUpperCase();
 	}
 }
 

@@ -11,15 +11,10 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
-
-import com.google.common.base.CaseFormat;
-
 import ar.edu.itba.admin.AdminCommand;
 import ar.edu.itba.admin.StatusResponse;
 import ar.edu.itba.config.ProxyConfiguration;
-import ar.edu.itba.filters.SilentUser;
 import ar.edu.itba.logger.XMPPProxyLogger;
-import ar.edu.itba.metrics.MetricsCollector;
 import ar.edu.itba.proxy.AdminConnection.AdminState;
 import ar.edu.itba.utils.Utils;
 
@@ -69,7 +64,7 @@ public class AdminProxyHandler implements Handler {
         Socket socket = newChannel.socket();
         SocketAddress remoteAddr = socket.getRemoteSocketAddress();
         SocketAddress localAddr = socket.getLocalSocketAddress();
-        XMPPProxyLogger.getInstance().debug("Accepted new client connection from " + localAddr + " to " + remoteAddr);
+        XMPPProxyLogger.getInstance().debug("Accepted new admin connection from " + localAddr + " to " + remoteAddr);
         newChannel.register(this.selector, SelectionKey.OP_READ);
         AdminConnection adminConnection = new AdminConnection(newChannel);
         connections.put(newChannel, adminConnection);
@@ -110,18 +105,22 @@ public class AdminProxyHandler implements Handler {
 					String command = commandGroup.group(COMMAND_GROUP);
 					String key = commandGroup.group(KEY_GROUP);
 					String value = commandGroup.group(VALUE_GROUP);
-					
+					String logMessage = AdminCommand.valueOf(command.toUpperCase()).getMessage();
 					switch (AdminCommand.valueOf(command.toUpperCase())) {
 					case SET:
+						
 						conf.setProperty(key, value);
 						statusResponse = StatusResponse.COMMAND_OK;
+						logger.info(logMessage + " " + StatusResponse.COMMAND_OK.getCode() + " - Updated " + key + " configuration");
 						break;
 					case UNSET:
 						conf.unsetProperty(key, value);
 						statusResponse = StatusResponse.COMMAND_OK;
+						logger.info(logMessage + " " + StatusResponse.COMMAND_OK.getCode() + " - Updated " + key + " configuration");
 						break;
 					default:
 						statusResponse = StatusResponse.COMMAND_UNKNOWN;
+						logger.error(StatusResponse.COMMAND_UNKNOWN.getCode() + " - Bad request");
 						break;
 					}
 				} else if (Utils.regexMatch(stringRead, onlyKeyRegex)) {
@@ -129,24 +128,33 @@ public class AdminProxyHandler implements Handler {
 					
 					String command = commandGroup.group(COMMAND_GROUP);
 					String key = commandGroup.group(KEY_GROUP);
+					String logMessage = AdminCommand.valueOf(command.toUpperCase().trim()).getMessage();
 					switch (AdminCommand.valueOf(command.toUpperCase().trim())) {
 					case GET:
 						if (key == null) {
 							statusResponse = StatusResponse.COMMAND_OK;
 							statusResponse.setExtendedMessage(conf.getAllProperties());
+							logger.info(logMessage + " " + StatusResponse.COMMAND_OK.getCode() + " - all configurations");
 						} else if (key.equals(METRICS)) {
+							statusResponse = StatusResponse.COMMAND_OK;
 							// TODO imprimir metricas
+							statusResponse.setExtendedMessage(conf.getAllProperties());
+							logger.info(logMessage + " " + StatusResponse.COMMAND_OK.getCode() + " - metrics");
 						} else {
 							String property = conf.getProperty(key);
 							if (property.isEmpty()) {
 								statusResponse = StatusResponse.NOT_FOUND;
+								logger.error(logMessage + " " + StatusResponse.NOT_FOUND.getCode() + " - " + key + " configuration not found");
 							} else {
 								statusResponse = StatusResponse.COMMAND_OK;
 								statusResponse.setExtendedMessage(property);
+								logger.info(logMessage + " " + StatusResponse.COMMAND_OK.getCode() + " - " + key + " configuration");
 							}
 						}
 						break;
 					case LOGOUT:
+						statusResponse = StatusResponse.COMMAND_OK;
+						logger.debug(logMessage + " " + StatusResponse.COMMAND_OK.getCode() + " - Connection closed by admin");
 						connection.setState(AdminState.NO_STATUS);
 						connection.closeConnection();
 						break;
@@ -155,12 +163,14 @@ public class AdminProxyHandler implements Handler {
 					}
 				} else {
 					statusResponse = StatusResponse.COMMAND_UNKNOWN;
+					logger.error(StatusResponse.COMMAND_UNKNOWN.getCode() + " - Bad request");
 				}
 				break;
 			case NO_STATUS:
 				if (Utils.regexMatch(stringRead, keyValRegex)) {
 					Matcher commandGroup = Utils.regexRead(stringRead, keyValRegex);
 					String command = commandGroup.group(COMMAND_GROUP);
+					String logMessage = AdminCommand.valueOf(command.toUpperCase()).getMessage();
 					switch (AdminCommand.valueOf(command.toUpperCase())) {
 					case LOGIN:
 						String user = commandGroup.group(KEY_GROUP);
@@ -168,33 +178,45 @@ public class AdminProxyHandler implements Handler {
 						if (adminUser.equals(user) && adminPassword.equals(password)) {
 							connection.setState(AdminState.LOGGED_IN);
 							statusResponse = StatusResponse.LOGIN_OK;
+							logger.info(logMessage + " " + StatusResponse.LOGIN_OK.getCode() + " - Login successfull");
 						} else {
 							statusResponse = StatusResponse.LOGIN_FAILED;
+							logger.info(logMessage + " " + StatusResponse.LOGIN_FAILED.getCode() + " - Login failed");
 						}
 						break;
-					default:
+					case SET:
+					case UNSET:
+					case GET:
+					case LOGOUT:
 						statusResponse = StatusResponse.COMMAND_FORBIDDEN;
+						logger.warn(logMessage + " " + StatusResponse.COMMAND_FORBIDDEN.getCode() + " - Unauthorize");
+						break;
+					default:
+						statusResponse = StatusResponse.COMMAND_UNKNOWN;
+						logger.error(logMessage + " " + StatusResponse.COMMAND_UNKNOWN.getCode() + " - Bad request");
 						break;
 					}
 				} else {
-					statusResponse = StatusResponse.COMMAND_FORBIDDEN;
+					statusResponse = StatusResponse.COMMAND_UNKNOWN;
+					logger.error(StatusResponse.COMMAND_UNKNOWN.getCode() + " - Bad request");
 				}
 				
 			}
 			return statusResponse.toString();
 		} catch (Exception e) {
+			logger.error(AdminCommand.GET.getMessage() + " " + StatusResponse.INTERNAL_ERROR.getCode() + " - " + StatusResponse.INTERNAL_ERROR.getMessage());
 			statusResponse = StatusResponse.INTERNAL_ERROR;
 			return statusResponse.toString();
 		}
 	}
-
+	
 	public void writeInChannel(String s, SocketChannel channel)
 			throws IOException {
 		ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
         try {
 			channel.write(buffer);
 		} catch (IOException e) {
-			logger.warn("Connection closed by client");
+			logger.error("Error trying to close connection " + channel.getRemoteAddress());
 			
 		}
         buffer.clear();
