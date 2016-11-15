@@ -174,9 +174,9 @@ public class ClientProxyHandler implements Handler {
 			String clientRemoteAddress = proxy.getClientChannel().getRemoteAddress().toString();
 			String jid = proxy.getJid();
     		clientToProxyChannelMap.remove(proxy.getClientChannel());
-	    	proxy.getClientChannel().close();
 	    	XMPPProxyLogger.getInstance().debug("Client[" + clientLocalAddress + "] to XMPP Proxy[" + clientRemoteAddress + "] socket closed");
 			XMPPProxyLogger.getInstance().info("Client " + jid + " has disconnected");
+	    	proxy.getClientChannel().close();
 	    	if(proxy.getServerChannel()!=null && proxy.getServerChannel().isOpen()){
 	    		String serverLocalAddress = proxy.getServerChannel().getLocalAddress().toString();
 				String serverRemoteAddress = proxy.getServerChannel().getRemoteAddress().toString();

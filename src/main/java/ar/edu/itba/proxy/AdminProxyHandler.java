@@ -32,6 +32,7 @@ public class AdminProxyHandler implements Handler {
 	private static String COMMAND_PATTERN = "[a-zA-Z]+";
 	private static String KEY_PATTERN = "[a-zA-z\\-]+";
 	private static String VALUE_PATTERN = ".+";
+	private static String WELCOME_MESSAGE = "Bienvenido a la administración del proxy!\n";
 	private static String keyValRegex = "^(" + COMMAND_PATTERN + ")\\s+(" + KEY_PATTERN + ")\\s*=\\s*(" + VALUE_PATTERN + ")\n$";
 	private static String onlyKeyRegex = "^(GET ?|LOGOUT$)\\s*("+ KEY_PATTERN +")?\n$";
 	private static int COMMAND_GROUP = 1;
@@ -69,6 +70,7 @@ public class AdminProxyHandler implements Handler {
         newChannel.register(this.selector, SelectionKey.OP_READ);
         AdminConnection adminConnection = new AdminConnection(newChannel);
         connections.put(newChannel, adminConnection);
+        writeInChannel(WELCOME_MESSAGE, newChannel);
 	}
 
 	public void read(SelectionKey key) throws IOException {
