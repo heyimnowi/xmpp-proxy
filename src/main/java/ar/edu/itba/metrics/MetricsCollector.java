@@ -48,7 +48,7 @@ public class MetricsCollector {
 			if(metrics.containsKey(jid)){
 				um = metrics.get(jid);
 			}else{
-				um = new UserMetrics();
+				um = new UserMetrics(jid);
 				metrics.put(jid, um);
 			}
 		}

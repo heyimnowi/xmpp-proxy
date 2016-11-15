@@ -16,6 +16,7 @@ import ar.edu.itba.admin.StatusResponse;
 import ar.edu.itba.config.ProxyConfiguration;
 import ar.edu.itba.logger.XMPPProxyLogger;
 import ar.edu.itba.metrics.MetricsCollector;
+import ar.edu.itba.metrics.UserMetrics;
 import ar.edu.itba.proxy.AdminConnection.AdminState;
 import ar.edu.itba.utils.Utils;
 
@@ -32,6 +33,7 @@ public class AdminProxyHandler implements Handler {
 	private static String COMMAND_PATTERN = "[a-zA-Z]+";
 	private static String KEY_PATTERN = "[a-zA-z\\-]+";
 	private static String VALUE_PATTERN = ".+";
+	private static String JID = "jid";
 	private static String WELCOME_MESSAGE = "Bienvenido a la administración del proxy!\n";
 	private static String keyValRegex = "^(" + COMMAND_PATTERN + ")\\s+(" + KEY_PATTERN + ")\\s*=\\s*(" + VALUE_PATTERN + ")\n$";
 	private static String onlyKeyRegex = "^(GET ?|LOGOUT$)\\s*("+ KEY_PATTERN +")?\n$";
@@ -111,7 +113,6 @@ public class AdminProxyHandler implements Handler {
 					String logMessage = AdminCommand.valueOf(command.toUpperCase()).getMessage();
 					switch (AdminCommand.valueOf(command.toUpperCase())) {
 					case SET:
-						
 						conf.setProperty(key, value);
 						statusResponse = StatusResponse.COMMAND_OK;
 						logger.info(logMessage + " " + StatusResponse.COMMAND_OK.getCode() + " - Updated " + key + " configuration");
@@ -120,6 +121,21 @@ public class AdminProxyHandler implements Handler {
 						conf.unsetProperty(key, value);
 						statusResponse = StatusResponse.COMMAND_OK;
 						logger.info(logMessage + " " + StatusResponse.COMMAND_OK.getCode() + " - Updated " + key + " configuration");
+						break;
+					case GET:
+						if(!key.toLowerCase().equals(JID)){
+							statusResponse = StatusResponse.COMMAND_UNKNOWN;
+						} else{
+							UserMetrics um = MetricsCollector.getInstance().getMetricsByJid(value);
+							if(um != null){
+								statusResponse = StatusResponse.COMMAND_OK;
+								statusResponse.setExtendedMessage(um.toString());
+								logger.info(logMessage + " " + StatusResponse.COMMAND_OK.getCode() + " - metrics");
+							}else{
+								statusResponse = StatusResponse.NOT_FOUND;
+								logger.info(logMessage + " " + StatusResponse.NOT_FOUND.getCode() + " - metrics");
+							}
+						}
 						break;
 					default:
 						statusResponse = StatusResponse.COMMAND_UNKNOWN;
