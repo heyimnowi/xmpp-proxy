@@ -82,7 +82,7 @@ public class AdminProxyHandler implements Handler {
 		numRead = channel.read(buffer);
 
 		if (numRead == -1) {
-			logger.warn("Connection closed by client");
+			logger.warn("Connection closed by admin");
 			channel.close();
 			key.cancel();
 			return;
