@@ -2,7 +2,7 @@ package ar.edu.itba.admin;
 
 public enum StatusResponse {
 	
-	LOGIN_OK(201, "Login succesfull"),
+	LOGIN_OK(201, "Login succesful"),
 	LOGIN_FAILED(401, "User/Password incorrect"),
 	COMMAND_OK(200, "Configuration updated"),
 	COMMAND_UNKNOWN(400, "Command Unknown"),

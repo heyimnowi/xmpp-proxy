@@ -80,8 +80,11 @@ public class MetricsCollector {
 
 	
 	public String toString () {
-		return 	"Bytes received: " + totalBytesReceived + ", " +
-				"Bytes sent: " + totalBytesSent + ", " +
-				"Total Accesses: " + totalAccesses;
+		return "\nmetrics: {\n" + 
+				"\t current_time_millis: " + System.currentTimeMillis() + ",\n" +
+				"\t bytes_received: " +  totalBytesReceived  + ",\n" +
+				"\t bytes_sent: " +  totalBytesSent  + ",\n" +
+				"\t accesses: " +  totalAccesses  + "\n" +
+				"}";
 	}
 }
