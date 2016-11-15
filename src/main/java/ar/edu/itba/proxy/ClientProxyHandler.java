@@ -95,6 +95,7 @@ public class ClientProxyHandler implements Handler {
         String stringRead = new String(data);
         if(MainProxy.verbose)
         	System.out.println(side + " wrote: " + stringRead);
+
         if (stringRead.equals(XMPP_FINAL_MESSAGE)) {
         	closeBothChannels(keyChannel);
         } else {
