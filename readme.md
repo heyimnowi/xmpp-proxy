@@ -5,6 +5,7 @@ Clone repository or download
 Execute:
 
 mvn install
+
 mvn exec:java -Dexec.mainClass=ar.edu.itba.proxy.MainProxy
 
 ## AWS Server
