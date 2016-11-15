@@ -6,7 +6,7 @@ Execute:
 
 mvn install
 
-mvn exec:java -Dexec.mainClass=ar.edu.itba.proxy.MainProxy
+mvn exec:java
 
 ## AWS Server
 ec2-54-69-136-236.us-west-2.compute.amazonaws.com
