@@ -14,7 +14,7 @@ public class Utils {
 	 * @return
 	 */
 	public static Matcher regexRead(String s, String pattern) {
-		Pattern r = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
+		Pattern r = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE | Pattern.DOTALL | Pattern.MULTILINE);
 		Matcher m = r.matcher(s);
 		m.find();
 		return m;
@@ -27,7 +27,7 @@ public class Utils {
 	 * @return
 	 */
 	public static boolean regexMatch(String s, String pattern) {
-		Pattern r = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
+		Pattern r = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE | Pattern.DOTALL | Pattern.MULTILINE);
 		Matcher m = r.matcher(s);
 		return m.find();
 	}
