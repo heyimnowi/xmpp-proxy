@@ -1,5 +1,7 @@
 package ar.edu.itba.stanza;
 
+import java.util.regex.Matcher;
+
 import ar.edu.itba.config.ProxyConfiguration;
 import ar.edu.itba.utils.Utils;
 
@@ -28,7 +30,16 @@ public class Stanza {
 	 * @return
 	 */
 	public static String tagAttr(String tag, String attr) {
-		return Utils.regexRead(tag, attr + "='([^']*)'").group(1);
+		Matcher m = Utils.regexRead(tag, attr + "='([^']*)'|=\"([^\"]*)\"");
+		if (m.group(1) != null && !m.group(1).isEmpty()) {
+			System.out.println("holis " + m.group(1));
+			return m.group(1);
+		} else if (m.group(2) != null && !m.group(2).isEmpty())  {
+			System.out.println("chauchis " + m.group(2));
+			return m.group(2);
+		} else {
+			return "";
+		}
 	}
 
 	/**
