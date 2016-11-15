@@ -32,10 +32,8 @@ public class Stanza {
 	public static String tagAttr(String tag, String attr) {
 		Matcher m = Utils.regexRead(tag, attr + "='([^']*)'|=\"([^\"]*)\"");
 		if (m.group(1) != null && !m.group(1).isEmpty()) {
-			System.out.println("holis " + m.group(1));
 			return m.group(1);
 		} else if (m.group(2) != null && !m.group(2).isEmpty())  {
-			System.out.println("chauchis " + m.group(2));
 			return m.group(2);
 		} else {
 			return "";

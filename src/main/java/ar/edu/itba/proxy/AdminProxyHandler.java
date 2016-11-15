@@ -91,7 +91,6 @@ public class AdminProxyHandler implements Handler {
 		byte[] data = new byte[numRead];
 		System.arraycopy(buffer.array(), 0, data, 0, numRead); 
 		String stringRead = new String(data);
-		System.out.println("Got admin: " + stringRead);
 		
 		AdminConnection connection = connections.get(channel);
 		String response = handleAdminCommand(connection, stringRead);
