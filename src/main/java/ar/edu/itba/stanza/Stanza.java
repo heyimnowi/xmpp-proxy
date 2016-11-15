@@ -28,7 +28,7 @@ public class Stanza {
 	 * @return
 	 */
 	public static String tagAttr(String tag, String attr) {
-		return Utils.regexRead(tag, attr + "='([^']*)'").group(1);
+		return Utils.regexRead(tag, attr + "=(\"|')([^']*)(\"|')").group(1);
 	}
 
 	/**
