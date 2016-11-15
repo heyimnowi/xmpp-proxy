@@ -1,3 +1,13 @@
+## Installation and execution
+
+Clone repository or download
+
+Execute:
+
+mvn install
+
+mvn exec:java
+
 ## AWS Server
 ec2-54-69-136-236.us-west-2.compute.amazonaws.com
 
