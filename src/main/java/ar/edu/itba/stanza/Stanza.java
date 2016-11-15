@@ -42,7 +42,7 @@ public class Stanza {
 	
 	public static String errorMessage(String condition, String type, String code,
 			String jid, String message) {
-		String admin = ProxyConfiguration.getInstance().getProperty("admin");;
+		//String admin = ProxyConfiguration.getInstance().getProperty("admin");;
 		return "<message to='"+jid+"' type='error'>" +
 				"<body>"+ message +"</body>" +
 				"<error code='"+ code +"' type='"+ type +"'>" +

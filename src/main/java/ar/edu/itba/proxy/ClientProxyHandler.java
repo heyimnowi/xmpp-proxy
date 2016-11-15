@@ -93,7 +93,8 @@ public class ClientProxyHandler implements Handler {
         byte[] data = new byte[numRead];
         System.arraycopy(buffer.array(), 0, data, 0, numRead); 
         String stringRead = new String(data);
-        System.out.println(side + " wrote: " + stringRead);
+        if(MainProxy.verbose)
+        	System.out.println(side + " wrote: " + stringRead);
         if (stringRead.equals(XMPP_FINAL_MESSAGE)) {
         	closeBothChannels(keyChannel);
         } else {
@@ -228,23 +229,26 @@ public class ClientProxyHandler implements Handler {
 	        writeInChannel(newString, pc.getServerChannel());
     	}
         catch(ClosedByInterruptException e) {
+        	logger.error(e.toString());
   	      	System.out.println("ClosedByInterruptException");
 	    }
 	    catch(AsynchronousCloseException e) {
 	    	System.out.println("AsynchronousCloseException");
 	    }
 	    catch(UnresolvedAddressException e) {
+	    	logger.error(e.toString());
 	    	System.out.println("UnresolvedAddressException");
-//	      probar algo como esto -> String error = "<?xml version='1.0'?><stream:stream id='' xmlns:stream='http://etherx.jabber.org/streams' version='1.0' xmlns='jabber:client'><stream:error><host-unknown xmlns='urn:ietf:params:xml:ns:xmpp-streams'/><text xmlns='urn:ietf:params:xml:ns:xmpp-streams'>This server does not serve otroserver</text></stream:error></stream:stream>";
-//	      writeInChannel(error, pc.getClientChannel());
 	    }
 	    catch(UnsupportedAddressTypeException e) {
+	    	logger.error(e.toString());
 	    	System.out.println("UnsupportedAddressTypeException");
 	    }
 	    catch(SecurityException e) {
+	    	logger.error(e.toString());
 	    	System.out.println("SecurityException");
 	    }
 	    catch(IOException e) {
+	    	logger.error(e.toString());
 	    	System.out.println("IOException");
 	    }
     }

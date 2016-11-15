@@ -1,15 +1,16 @@
 package ar.edu.itba.proxy;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
-import java.nio.channels.UnresolvedAddressException;
-
-import ar.edu.itba.config.ProxyConfiguration;
 
 public class MainProxy {
-
+	public static boolean verbose = false;
 	public static void main(String[] args) throws IOException {
+		
+		if(args.length > 0){
+			if(args[0].equals("-v"))
+				verbose = true;
+		}
+		
 		Dispatcher dispatcher = new Dispatcher();
 		dispatcher.runProxy();
 	}
