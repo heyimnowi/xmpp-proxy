@@ -1,6 +1,8 @@
 package ar.edu.itba.proxy;
 
 import java.nio.channels.SocketChannel;
+import java.util.LinkedList;
+import java.util.Queue;
 
 public class ProxyConnection {
 	
@@ -9,6 +11,8 @@ public class ProxyConnection {
 	private String jid;
 	private String username;
 	private boolean tryingToRegister;
+	
+	public Queue<String> initialMsgs = new LinkedList<String>();
 	
 	public ProxyConnection(SocketChannel clientChannel) {
 		this.clientChannel = clientChannel; 

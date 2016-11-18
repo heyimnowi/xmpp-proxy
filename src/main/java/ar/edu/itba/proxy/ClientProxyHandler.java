@@ -102,8 +102,11 @@ public class ClientProxyHandler implements Handler {
         	if (channelIsServerSide(keyChannel)) {
         		ProxyConnection connection = proxyToClientChannelMap.get(keyChannel);
         		getToJid(connection, stringRead);
-        		if (connection.isUserRecognized()) {
-        			sendToClient(stringRead, connection.getClientChannel());
+        		if (connection.isUserRecognized() /*&& !isInitialMessage(stringRead)*/) {
+        			if(!connection.initialMsgs.isEmpty())
+        				sendToServer(connection.initialMsgs.poll(), connection);
+        			else
+        				sendToClient(stringRead, connection.getClientChannel());
         		} else if (connection.isTryingToRegister() && !isInitialMessage(stringRead)) {
         			// when registration happens, server sends 2 messages, client already got the first one from us when we faked it
         			sendToClient(stringRead, connection.getClientChannel());
@@ -144,18 +147,27 @@ public class ClientProxyHandler implements Handler {
 	}
 
 	private void handleUnknownUser(ProxyConnection connection, String stringRead) {
+		connection.initialMsgs.offer(stringRead);
 		if (Utils.regexMatch(stringRead, Stanza.CLIENT_AUTH_PATTERN)) {
         	String auth64 = Utils.regexRead(stringRead, Stanza.CLIENT_AUTH_PATTERN).group(1);
         	byte[] authDecoded = Base64.decodeBase64(auth64);
         	int passwordStartIndex = new String(authDecoded).indexOf('\0', 2);
         	String username = new String(authDecoded, 1, passwordStartIndex - 1);
-        	if (username != null)
+        	if (username != null){
+        		System.out.println("Client " + username + " is attempting to connect");
         		XMPPProxyLogger.getInstance().info("Client " + username + " is attempting to connect");
+        	}
         	connection.setUsername(username);
-        	sendToClient(Stanza.FAKE_PLAIN_AUTH_SUCCESS, connection.getClientChannel());
+        	sendToServer(connection.initialMsgs.poll(),connection);
+        	//sendToClient(Stanza.FAKE_PLAIN_AUTH_SUCCESS, connection.getClientChannel());
         } else {
         	sendToClient(Stanza.FAKE_SERVER_INITIAL_PLAIN_AUTH_RESPONSE, connection.getClientChannel());
         }
+	}
+
+	private void fakeToServer(ProxyConnection connection) {
+		// TODO Auto-generated method stub
+		
 	}
 
 	/**
