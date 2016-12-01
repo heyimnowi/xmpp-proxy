@@ -4,14 +4,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
 import ar.edu.itba.filters.Multiplexing;
-import ar.edu.itba.filters.ProxyFilter;
 import ar.edu.itba.filters.SilentUser;
 import ar.edu.itba.filters.Transformations;
 import ar.edu.itba.logger.XMPPProxyLogger;

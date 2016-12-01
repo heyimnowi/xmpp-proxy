@@ -6,7 +6,7 @@ Execute:
 
 mvn install
 
-mvn exec:java
+mvn exec:java   (-Dexec.args="-v" for verbose)
 
 ## AWS Server
 ec2-54-69-136-236.us-west-2.compute.amazonaws.com

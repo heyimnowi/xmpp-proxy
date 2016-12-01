@@ -93,14 +93,20 @@ public class ClientProxyHandler implements Handler {
         byte[] data = new byte[numRead];
         System.arraycopy(buffer.array(), 0, data, 0, numRead); 
         String stringRead = new String(data);
+        if(MainProxy.verbose)
+        	System.out.println(side + " wrote: " + stringRead);
+
         if (stringRead.equals(XMPP_FINAL_MESSAGE)) {
         	closeBothChannels(keyChannel);
         } else {
         	if (channelIsServerSide(keyChannel)) {
         		ProxyConnection connection = proxyToClientChannelMap.get(keyChannel);
         		getToJid(connection, stringRead);
-        		if (connection.isUserRecognized()) {
-        			sendToClient(stringRead, connection.getClientChannel());
+        		if (connection.isUserRecognized() /*&& !isInitialMessage(stringRead)*/) {
+        			if(!connection.initialMsgs.isEmpty())
+        				sendToServer(connection.initialMsgs.poll(), connection);
+        			else
+        				sendToClient(stringRead, connection.getClientChannel());
         		} else if (connection.isTryingToRegister() && !isInitialMessage(stringRead)) {
         			// when registration happens, server sends 2 messages, client already got the first one from us when we faked it
         			sendToClient(stringRead, connection.getClientChannel());
@@ -141,18 +147,27 @@ public class ClientProxyHandler implements Handler {
 	}
 
 	private void handleUnknownUser(ProxyConnection connection, String stringRead) {
+		connection.initialMsgs.offer(stringRead);
 		if (Utils.regexMatch(stringRead, Stanza.CLIENT_AUTH_PATTERN)) {
         	String auth64 = Utils.regexRead(stringRead, Stanza.CLIENT_AUTH_PATTERN).group(1);
         	byte[] authDecoded = Base64.decodeBase64(auth64);
         	int passwordStartIndex = new String(authDecoded).indexOf('\0', 2);
         	String username = new String(authDecoded, 1, passwordStartIndex - 1);
-        	if (username != null)
+        	if (username != null){
+        		System.out.println("Client " + username + " is attempting to connect");
         		XMPPProxyLogger.getInstance().info("Client " + username + " is attempting to connect");
+        	}
         	connection.setUsername(username);
-        	sendToClient(Stanza.FAKE_PLAIN_AUTH_SUCCESS, connection.getClientChannel());
+        	sendToServer(connection.initialMsgs.poll(),connection);
+        	//sendToClient(Stanza.FAKE_PLAIN_AUTH_SUCCESS, connection.getClientChannel());
         } else {
         	sendToClient(Stanza.FAKE_SERVER_INITIAL_PLAIN_AUTH_RESPONSE, connection.getClientChannel());
         }
+	}
+
+	private void fakeToServer(ProxyConnection connection) {
+		// TODO Auto-generated method stub
+		
 	}
 
 	/**
@@ -227,23 +242,26 @@ public class ClientProxyHandler implements Handler {
 	        writeInChannel(newString, pc.getServerChannel());
     	}
         catch(ClosedByInterruptException e) {
+        	logger.error(e.toString());
   	      	System.out.println("ClosedByInterruptException");
 	    }
 	    catch(AsynchronousCloseException e) {
 	    	System.out.println("AsynchronousCloseException");
 	    }
 	    catch(UnresolvedAddressException e) {
+	    	logger.error(e.toString());
 	    	System.out.println("UnresolvedAddressException");
-//	      probar algo como esto -> String error = "<?xml version='1.0'?><stream:stream id='' xmlns:stream='http://etherx.jabber.org/streams' version='1.0' xmlns='jabber:client'><stream:error><host-unknown xmlns='urn:ietf:params:xml:ns:xmpp-streams'/><text xmlns='urn:ietf:params:xml:ns:xmpp-streams'>This server does not serve otroserver</text></stream:error></stream:stream>";
-//	      writeInChannel(error, pc.getClientChannel());
 	    }
 	    catch(UnsupportedAddressTypeException e) {
+	    	logger.error(e.toString());
 	    	System.out.println("UnsupportedAddressTypeException");
 	    }
 	    catch(SecurityException e) {
+	    	logger.error(e.toString());
 	    	System.out.println("SecurityException");
 	    }
 	    catch(IOException e) {
+	    	logger.error(e.toString());
 	    	System.out.println("IOException");
 	    }
     }

@@ -11,6 +11,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
+
 import ar.edu.itba.admin.AdminCommand;
 import ar.edu.itba.admin.StatusResponse;
 import ar.edu.itba.config.ProxyConfiguration;
@@ -91,7 +92,8 @@ public class AdminProxyHandler implements Handler {
 		byte[] data = new byte[numRead];
 		System.arraycopy(buffer.array(), 0, data, 0, numRead); 
 		String stringRead = new String(data);
-		
+		if(MainProxy.verbose)
+			System.out.println("Got admin: " + stringRead);		
 		AdminConnection connection = connections.get(channel);
 		String response = handleAdminCommand(connection, stringRead);
 		writeInChannel(response, channel);
