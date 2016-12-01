@@ -59,6 +59,8 @@ public class Dispatcher {
                 }
                 else if (key.isReadable()) {
                     this.read(key);
+                } else if (key.isWritable()) {
+                	this.write(key);
                 }
             }
         }
@@ -66,6 +68,11 @@ public class Dispatcher {
 
 	}
 	
+	private void write(SelectionKey key) throws IOException {
+		Handler handler = getHandlerFromKey(key);
+		handler.write(key);
+	}
+
 	private void read(SelectionKey key) throws IOException {
 		Handler handler = getHandlerFromKey(key);
 		handler.read(key);

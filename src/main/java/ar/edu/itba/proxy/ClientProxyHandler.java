@@ -7,6 +7,7 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -16,6 +17,8 @@ import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.codec.binary.Base64;
+
+import com.google.common.base.Utf8;
 
 import ar.edu.itba.filters.Multiplexing;
 import ar.edu.itba.filters.SilentUser;
@@ -34,10 +37,12 @@ public class ClientProxyHandler implements Handler {
 	private Selector selector;
     private final static String XMPP_FINAL_MESSAGE = "</stream:stream>";
     private final static int BUFFER_SIZE = 1024*100;
+    private final ByteBuffer bufferForRead;
     private ServerSocketChannel channel;
 
     public ClientProxyHandler(String address, int port, Selector selector) throws IOException {
     	this.selector = selector;
+    	bufferForRead = ByteBuffer.allocate(BUFFER_SIZE);
     	listenAddress = new InetSocketAddress(address, port);
         channel = ServerSocketChannel.open();
         channel.configureBlocking(false);
@@ -79,9 +84,10 @@ public class ClientProxyHandler implements Handler {
      */
     public void read(SelectionKey key) throws IOException {
         SocketChannel keyChannel = (SocketChannel) key.channel();
-        ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
+        
         int numRead = -1;
-        numRead = keyChannel.read(buffer); // TODO catch java.io.IOException: Connection reset by peer
+        bufferForRead.clear();
+        numRead = keyChannel.read(bufferForRead); // TODO catch java.io.IOException: Connection reset by peer
         String side = channelIsServerSide(keyChannel) ? "server" : "client";
         if (numRead == -1) {
             XMPPProxyLogger.getInstance().warn("Connection closed by " + side);
@@ -89,10 +95,11 @@ public class ClientProxyHandler implements Handler {
             key.cancel();
             return;
         }
-
+        
         byte[] data = new byte[numRead];
-        System.arraycopy(buffer.array(), 0, data, 0, numRead); 
-        String stringRead = new String(data);
+        System.arraycopy(bufferForRead.array(), 0, data, 0, numRead);
+        String stringRead = new String(data, "UTF-8");
+        
         if(MainProxy.verbose)
         	System.out.println(side + " wrote: " + stringRead);
 
@@ -219,6 +226,9 @@ public class ClientProxyHandler implements Handler {
      * @param channel
      */
     private void sendToClient(String s, SocketChannel channel) {
+    	if (MainProxy.verbose) {
+			System.out.println("proxy is writing to client the string: " + s);
+    	}
     	writeInChannel(s, channel);
     }
     
@@ -239,6 +249,10 @@ public class ClientProxyHandler implements Handler {
 	            proxyToClientChannelMap.put(serverChannel, pc);
 	    	}
 	    	String newString = Transformations.getInstance().applyTransformations(s);
+	    	if (MainProxy.verbose) {
+	    		String ip = pc.getServerChannel().getRemoteAddress().toString().split("/")[1].split(":")[0];
+				System.out.println("proxy is writing to: " + ip + " the string: " + newString);
+	    	}
 	        writeInChannel(newString, pc.getServerChannel());
     	}
         catch(ClosedByInterruptException e) {
@@ -277,11 +291,13 @@ public class ClientProxyHandler implements Handler {
      */
     public void writeInChannel(String s, SocketChannel channel) {
     	ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
-        try {
-			channel.write(buffer);
-		} catch (IOException e) {
-			logger.warn("Connection closed by client");
-			
+    	SelectionKey channelKey = channel.keyFor(selector);
+    	try {
+			channel.register(selector, SelectionKey.OP_WRITE);
+			channelKey.attach(buffer);
+		} catch (ClosedChannelException e) {
+			// TODO Auto-generated catch block
+			System.out.println("pincho registrar el channel para escribir");
 		}
     	String jid;
         if(channelIsServerSide(channel)){
@@ -291,7 +307,18 @@ public class ClientProxyHandler implements Handler {
         	jid = getFromJid(clientToProxyChannelMap.get(channel), s);
         	MetricsCollector.getInstance().msgSent(jid, s);
         }
-        buffer.clear();
+    }
+    
+    public void write(SelectionKey key) {
+    	ByteBuffer buffer = (ByteBuffer) key.attachment();
+    	SocketChannel channel = (SocketChannel) key.channel();
+    	try {
+			channel.write(buffer);
+			channel.register(selector, SelectionKey.OP_READ);
+		} catch (IOException e) {
+			logger.warn("Connection closed by client");
+		}
+    	buffer.clear();
     }
     
     /**

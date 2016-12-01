@@ -5,6 +5,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -229,15 +230,26 @@ public class AdminProxyHandler implements Handler {
 		}
 	}
 	
-	public void writeInChannel(String s, SocketChannel channel)
-			throws IOException {
-		ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
-        try {
+	public void writeInChannel(String s, SocketChannel channel) {
+    	ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
+    	SelectionKey channelKey = channel.keyFor(selector);
+    	channelKey.attach(buffer);
+    	try {
+			channel.register(selector, SelectionKey.OP_WRITE);
+		} catch (ClosedChannelException e) {
+			// TODO Auto-generated catch block
+			System.out.println("Admin - pincho registrar el channel para escribir");
+		}
+    }
+    
+    public void write(SelectionKey key) {
+    	ByteBuffer buffer = (ByteBuffer) key.attachment();
+    	SocketChannel channel = (SocketChannel) key.channel();
+    	try {
 			channel.write(buffer);
 		} catch (IOException e) {
-			logger.error("Error trying to close connection " + channel.getRemoteAddress());
-			
+			logger.warn("Connection closed by admin");
 		}
-        buffer.clear();
-	}
+    	buffer.clear();
+    }
 }

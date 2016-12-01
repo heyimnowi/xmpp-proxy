@@ -3,7 +3,7 @@ package ar.edu.itba.proxy;
 import java.io.IOException;
 
 public class MainProxy {
-	public static boolean verbose = false;
+	public static boolean verbose = true;
 	public static void main(String[] args) throws IOException {
 		
 		if(args.length > 0){
