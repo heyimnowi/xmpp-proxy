@@ -28,8 +28,9 @@ public class ProxyConfiguration {
 	private ProxyConfiguration() {
 		this.properties = new Properties();
 		try {
-			String current = new java.io.File(".").getCanonicalPath();
-			this.file = new File(current + "/src/main/resources/config.properties");
+			// String current = new java.io.File(".").getCanonicalPath();
+			// this.file = new File(current + "/src/main/resources/config.properties");
+			this.file = new File("./config.properties");
 			FileInputStream fis = new FileInputStream(file);
 			properties.load(fis);
 
@@ -55,9 +56,9 @@ public class ProxyConfiguration {
 		}
 		properties.setProperty(property, finalValue);
 		flushPropertiesToFile();
-		
+
 	}
-	
+
 	public void unsetProperty(String property, String value) throws IOException {
 		if (property.startsWith("filter_")) {
 			Set<String> propertyValues = propertyToSetOfValues(property);
@@ -66,13 +67,13 @@ public class ProxyConfiguration {
 			flushPropertiesToFile();
 		}
 	}
-	
+
 	private void flushPropertiesToFile() throws IOException {
 		FileOutputStream fos = new FileOutputStream(this.file);
 		properties.store(fos, "");
 		updateFilters();
 	}
-	
+
 	private void updateFilters() {
 		SilentUser.getInstance().update();
 		Multiplexing.getInstance().update();
@@ -91,11 +92,11 @@ public class ProxyConfiguration {
 	public boolean hasProperty(String property) {
 		return properties.containsKey(property);
 	}
-	
+
 	public String getAllProperties() {
 		return propertiesFromSet(properties.keySet());
 	}
-	
+
 	private String propertiesFromSet(Set<?> set) {
 		StringBuilder all = new StringBuilder();
 		for (Object key : set) {
