@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
@@ -233,23 +234,39 @@ public class AdminProxyHandler implements Handler {
 	public void writeInChannel(String s, SocketChannel channel) {
     	ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
     	SelectionKey channelKey = channel.keyFor(selector);
-    	channelKey.attach(buffer);
     	try {
 			channel.register(selector, SelectionKey.OP_WRITE);
+			channelKey.attach(buffer);
 		} catch (ClosedChannelException e) {
 			// TODO Auto-generated catch block
-			System.out.println("Admin - pincho registrar el channel para escribir");
+			System.out.println("pincho registrar el channel para escribir");
 		}
     }
     
-    public void write(SelectionKey key) {
+    public void write(SelectionKey key) throws SocketException {
     	ByteBuffer buffer = (ByteBuffer) key.attachment();
     	SocketChannel channel = (SocketChannel) key.channel();
+    	channel.socket().setSendBufferSize(1024);
+    	if (MainProxy.verbose)
+    		System.out.println("socket can send " + channel.socket().getSendBufferSize() + " bytes per write operation");
     	try {
+    		if (MainProxy.verbose)
+    			System.out.println("buffer has: " + buffer.remaining() + " remaining bytes");
 			channel.write(buffer);
+			if (MainProxy.verbose)
+				System.out.println("buffer has: " + buffer.remaining() + " remaining bytes");
+			
+			if (buffer.hasRemaining()) {
+				channel.register(selector, SelectionKey.OP_WRITE);
+				SelectionKey channelKey = channel.keyFor(selector);
+				channelKey.attach(buffer);
+			} else {
+				channel.register(selector, SelectionKey.OP_READ);
+				buffer.clear();
+			}
+			
 		} catch (IOException e) {
-			logger.warn("Connection closed by admin");
+			logger.warn("Connection closed by client");
 		}
-    	buffer.clear();
     }
 }

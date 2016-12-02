@@ -12,6 +12,7 @@ import ar.edu.itba.filters.Multiplexing;
 import ar.edu.itba.filters.SilentUser;
 import ar.edu.itba.filters.Transformations;
 import ar.edu.itba.logger.XMPPProxyLogger;
+import ar.edu.itba.proxy.MainProxy;
 
 public class ProxyConfiguration {
 	private Properties properties;
@@ -78,6 +79,7 @@ public class ProxyConfiguration {
 		SilentUser.getInstance().update();
 		Multiplexing.getInstance().update();
 		Transformations.getInstance().update();
+		MainProxy.verbose = Boolean.valueOf(properties.getProperty("verbose"));
 	}
 
 	private Set<String> propertyToSetOfValues(String property) {

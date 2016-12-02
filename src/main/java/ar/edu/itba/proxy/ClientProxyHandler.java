@@ -162,7 +162,8 @@ public class ClientProxyHandler implements Handler {
         	int passwordStartIndex = new String(authDecoded).indexOf('\0', 2);
         	String username = new String(authDecoded, 1, passwordStartIndex - 1);
         	if (username != null){
-        		System.out.println("Client " + username + " is attempting to connect");
+        		if (MainProxy.verbose)
+        			System.out.println("Client " + username + " is attempting to connect");
         		XMPPProxyLogger.getInstance().info("Client " + username + " is attempting to connect");
         	}
         	connection.setUsername(username);
@@ -298,7 +299,8 @@ public class ClientProxyHandler implements Handler {
 			channelKey.attach(buffer);
 		} catch (ClosedChannelException e) {
 			// TODO Auto-generated catch block
-			System.out.println("pincho registrar el channel para escribir");
+			if (MainProxy.verbose)
+				System.out.println("Error al registrar una key para escribir");
 		}
     	String jid;
         if(channelIsServerSide(channel)){
@@ -313,7 +315,7 @@ public class ClientProxyHandler implements Handler {
     public void write(SelectionKey key) throws SocketException {
     	ByteBuffer buffer = (ByteBuffer) key.attachment();
     	SocketChannel channel = (SocketChannel) key.channel();
-    	channel.socket().setSendBufferSize(100);
+    	channel.socket().setSendBufferSize(1024);
     	if (MainProxy.verbose)
     		System.out.println("socket can send " + channel.socket().getSendBufferSize() + " bytes per write operation");
     	try {
