@@ -1,4 +1,6 @@
 target/*
 .DS_Store
 xmpp-proxy.log
-nowixmppserver.pem
+.settings
+.classpath
+.project
